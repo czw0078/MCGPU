@@ -58,8 +58,7 @@ namespace BruteForceCalcs {
    * @param atomCoords The coordinates of the atoms to check.
    * @return true if the molecules are in range, false otherwise.
    */
-  #pragma acc routine vector
-  Real calcMoleculeInteractionEnergy (int m1, int m2, int** molData,
+  Real calcMoleculeInteractionEnergy (int m1, int m2, int* molData,
                                       Real** aData, Real** aCoords,
                                       Real* bSize);
 }

@@ -13,10 +13,6 @@
 #include <iostream>
 #include <fstream>
 
-#ifdef _OPENACC
-#include <openacc.h>
-#endif
-
 
 int metrosim::run(int argc, char** argv) {
 	SimulationArgs args = SimulationArgs();
@@ -25,6 +21,7 @@ int metrosim::run(int argc, char** argv) {
 		exit(EXIT_FAILURE);
 	}
 
+/*
 #ifdef _OPENACC
 	int numDevices = acc_get_num_devices(acc_device_nvidia);
 
@@ -54,7 +51,7 @@ int metrosim::run(int argc, char** argv) {
         acc_init(acc_device_nvidia);
     }
 
-#else
+#else */
     // Without OpenACC, only serial calculations are supported
     if (args.simulationMode == SimulationMode::Parallel) {
         fprintf(stdout, "Must compile with OpenACC capability to run in "
@@ -64,7 +61,7 @@ int metrosim::run(int argc, char** argv) {
         args.simulationMode = SimulationMode::Serial;
 		fprintf(stdout, "Beginning simulation using CPU...\n");
     }
-#endif
+//#endif
 
 	Simulation sim = Simulation(args);
 	sim.run();

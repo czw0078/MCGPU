@@ -76,7 +76,7 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
   sb->rollBackCoordinates = new Real*[NUM_DIMENSIONS];
   sb->atomCoordinates = new Real*[NUM_DIMENSIONS];
   sb->atomData = new Real*[ATOM_DATA_SIZE];
-  sb->moleculeData = new int*[MOL_DATA_SIZE];
+  sb->moleculeData = new int[MOL_DATA_SIZE * sb->numMolecules];
   sb->bondData = new Real*[BOND_DATA_SIZE];
   sb->angleData = new Real*[ANGLE_DATA_SIZE];
   sb->bondLengths = new Real[nBonds];
@@ -95,10 +95,6 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
     sb->atomData[i] = new Real[sb->numAtoms];
   }
 
-  for (int i = 0; i < MOL_DATA_SIZE; i++) {
-    sb->moleculeData[i] = new int[sb->numMolecules];
-  }
-
   for (int i = 0; i < BOND_DATA_SIZE; i++) {
     sb->bondData[i] = new Real[sb->numBonds];
   }
@@ -112,13 +108,13 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
   std::map<int, std::string*> idToName;
 
   for (int i = 0; i < sb->numMolecules; i++) {
-    sb->moleculeData[MOL_START][i] = atomIdx;
-    sb->moleculeData[MOL_LEN][i] = molecules[i].numOfAtoms;
-    sb->moleculeData[MOL_TYPE][i] = molecules[i].type;
-    sb->moleculeData[MOL_BOND_START][i] = bondIdx;
-    sb->moleculeData[MOL_BOND_COUNT][i] = molecules[i].numOfBonds;
-    sb->moleculeData[MOL_ANGLE_START][i] = angleIdx;
-    sb->moleculeData[MOL_ANGLE_COUNT][i] = molecules[i].numOfAngles;
+    sb->moleculeData[MOL_START * sb->numMolecules + i] = atomIdx;
+    sb->moleculeData[MOL_LEN * sb->numMolecules + i] = molecules[i].numOfAtoms;
+    sb->moleculeData[MOL_TYPE * sb->numMolecules + i] = molecules[i].type;
+    sb->moleculeData[MOL_BOND_START * sb->numMolecules + i] = bondIdx;
+    sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + i] = molecules[i].numOfBonds;
+    sb->moleculeData[MOL_ANGLE_START * sb->numMolecules + i] = angleIdx;
+    sb->moleculeData[MOL_ANGLE_COUNT * sb->numMolecules + i] = molecules[i].numOfAngles;
 
     // Store all the atom data for the molecule
     for (int j = 0; j < molecules[i].numOfAtoms; j++) {
@@ -188,10 +184,10 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
 
     int type = molecules[i].type;
     if (sb->excludeAtoms[type] == NULL) {
-      int numOfAtoms = sb->moleculeData[MOL_LEN][i];
+      int numOfAtoms = sb->moleculeData[MOL_LEN * sb->numMolecules + i];
       sb->excludeAtoms[type] = new int*[numOfAtoms];
       sb->fudgeAtoms[type] = new int*[numOfAtoms];
-      int startIdx = sb->moleculeData[MOL_START][i];
+      int startIdx = sb->moleculeData[MOL_START * sb->numMolecules + i];
       int *excludeCount = new int[numOfAtoms];
       int *fudgeCount = new int[numOfAtoms];
       for (int j = 0; j < numOfAtoms; j++) {
@@ -282,18 +278,18 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
 void SimBoxBuilder::addPrimaryIndexes(std::vector< std::vector<int>* >* in) {
   int numPIdxes = 0;
   for (int i = 0; i < sb->numMolecules; i++) {
-    numPIdxes += in->at(sb->moleculeData[MOL_TYPE][i])->size();
+    numPIdxes += in->at(sb->moleculeData[MOL_TYPE * sb->numMolecules + i])->size();
   }
   sb->primaryIndexes = new int[numPIdxes];
   sb->numPIdxes = numPIdxes;
 
   int idx = 0;
   for (int i = 0; i < sb->numMolecules; i++) {
-    vector<int>* v = in->at(sb->moleculeData[MOL_TYPE][i]);
-    sb->moleculeData[MOL_PIDX_START][i] = idx;
-    sb->moleculeData[MOL_PIDX_COUNT][i] = v->size();
+    vector<int>* v = in->at(sb->moleculeData[MOL_TYPE * sb->numMolecules + i]);
+    sb->moleculeData[MOL_PIDX_START * sb->numMolecules + i] = idx;
+    sb->moleculeData[MOL_PIDX_COUNT * sb->numMolecules + i] = v->size();
     for (int j = 0; j < v->size(); j++) {
-      sb->primaryIndexes[idx++] = v->at(j) + sb->moleculeData[MOL_START][i];
+      sb->primaryIndexes[idx++] = v->at(j) + sb->moleculeData[MOL_START * sb->numMolecules + i];
     }
   }
 }
@@ -325,7 +321,7 @@ void SimBoxBuilder::fillNLC() {
   }
   sb->nlc_heap = new NLC_Node[sb->numMolecules];
   for (int i = 0; i < sb->numMolecules; i++) {
-    int pIdx = sb->primaryIndexes[sb->moleculeData[MOL_PIDX_START][i]];
+    int pIdx = sb->primaryIndexes[sb->moleculeData[MOL_PIDX_START * sb->numMolecules + i]];
     int cloc[3];
     for (int j = 0; j < NUM_DIMENSIONS; j++) {
       cloc[j] = sb->getCell(sb->atomCoordinates[j][pIdx], j);

@@ -22,9 +22,12 @@ namespace GPUCopy {
   Real* rollBackAnglesPtr();
 
   int* primaryIndexesPtr();
-  int** moleculeDataPtr();
+  int* moleculeDataPtr();
   Real* sizePtr();
   int onGpu();
+
+  __host__ __device__
+  int getNumMolecules();
 }
 
 

@@ -1,7 +1,3 @@
-#ifdef _OPENACC
-#include <openacc.h>
-#endif
-
 #include "SimBox.h"
 #include "GPUCopy.h"
 
@@ -11,7 +7,7 @@
 int SimBox::findNeighbors(int molIdx) {
   int outIdx = 0;
 
-  int pIdx = primaryIndexes[moleculeData[MOL_PIDX_START][molIdx]];
+  int pIdx = primaryIndexes[moleculeData[numMolecules * MOL_PIDX_START + molIdx]];
 
   int base[3];
   for (int i = 0; i < 3; i++) {
@@ -49,7 +45,7 @@ int SimBox::getCell(Real loc, int dimension) {
 void SimBox::updateNLC(int molIdx) {
   bool update = false;
   int newCell[3];
-  int pIdx = primaryIndexes[moleculeData[MOL_PIDX_START][molIdx]];
+  int pIdx = primaryIndexes[moleculeData[numMolecules * MOL_PIDX_START + molIdx]];
   for (int i = 0; i < NUM_DIMENSIONS; i++) {
     newCell[i] = getCell(atomCoordinates[i][pIdx], i);
     if (newCell[i] != prevCell[i])

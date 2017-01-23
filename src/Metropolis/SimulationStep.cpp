@@ -78,10 +78,10 @@ SimBox* SimCalcs::sb;
 int SimCalcs::on_gpu;
 
 Real SimCalcs::calcIntraMolecularEnergy(int molIdx) {
-  int** moleculeData = sb->moleculeData;
-  int molStart = moleculeData[MOL_START][molIdx];
-  int molEnd = molStart + moleculeData[MOL_LEN][molIdx];
-  int molType = moleculeData[MOL_TYPE][molIdx];
+  int* moleculeData = sb->moleculeData;
+  int molStart = moleculeData[MOL_START * sb->numMolecules + molIdx];
+  int molEnd = molStart + moleculeData[MOL_LEN * sb->numMolecules + molIdx];
+  int molType = moleculeData[MOL_TYPE * sb->numMolecules + molIdx];
   Real** aCoords = GPUCopy::atomCoordinatesPtr();
   Real** atomData = sb->atomData;
 
@@ -91,7 +91,6 @@ Real SimCalcs::calcIntraMolecularEnergy(int molIdx) {
 
   // Calculate intramolecular LJ and Coulomb energy if necessary
   if (sb->hasFlexibleBonds || sb->hasFlexibleAngles) {
-    #pragma acc parallel loop deviceptr(aCoords) if (on_gpu)
     for (int i = molStart; i < molEnd; i++) {
       for (int j = i + 1; j < molEnd; j++) {
         Real fudgeFactor = 1.0;
@@ -132,10 +131,9 @@ Real SimCalcs::angleEnergy(int molIdx) {
   Real** angleData = GPUCopy::angleDataPtr();
   Real* angleSizes = GPUCopy::angleSizesPtr();
   Real out = 0;
-  int angleStart = sb->moleculeData[MOL_ANGLE_START][molIdx];
-  int angleEnd = angleStart + sb->moleculeData[MOL_ANGLE_COUNT][molIdx];
+  int angleStart = sb->moleculeData[MOL_ANGLE_START * sb->numMolecules + molIdx];
+  int angleEnd = angleStart + sb->moleculeData[MOL_ANGLE_COUNT * sb->numMolecules + molIdx];
 
-  #pragma acc parallel loop deviceptr(angleData, angleSizes) if (on_gpu)
   for (int i = angleStart; i < angleEnd; i++) {
     if ((bool)angleData[ANGLE_VARIABLE][i]) {
       Real diff = angleData[ANGLE_EQANGLE][i] - angleSizes[i];
@@ -146,13 +144,13 @@ Real SimCalcs::angleEnergy(int molIdx) {
 }
 
 void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
-  int** moleculeData = sb->moleculeData;
+  int* moleculeData = sb->moleculeData;
   Real* angleSizes = GPUCopy::angleSizesPtr();
-  int bondStart = moleculeData[MOL_BOND_START][molIdx];
-  int bondEnd = bondStart + moleculeData[MOL_BOND_COUNT][molIdx];
-  int angleStart = moleculeData[MOL_ANGLE_START][molIdx];
-  int startIdx = moleculeData[MOL_START][molIdx];
-  int molSize = moleculeData[MOL_LEN][molIdx];
+  int bondStart = moleculeData[MOL_BOND_START * sb->numMolecules + molIdx];
+  int bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * sb->numMolecules + molIdx];
+  int angleStart = moleculeData[MOL_ANGLE_START * sb->numMolecules + molIdx];
+  int startIdx = moleculeData[MOL_START * sb->numMolecules + molIdx];
+  int molSize = moleculeData[MOL_LEN * sb->numMolecules + molIdx];
   int end1 = (int)sb->angleData[ANGLE_A1_IDX][angleStart + angleIdx];
   int end2 = (int)sb->angleData[ANGLE_A2_IDX][angleStart + angleIdx];
   int mid = (int)sb->angleData[ANGLE_MID_IDX][angleStart + angleIdx];
@@ -184,7 +182,6 @@ void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
   Real end2Mid[NUM_DIMENSIONS];
   Real normal[NUM_DIMENSIONS];
   Real mvector[NUM_DIMENSIONS];
-  #pragma acc parallel loop deviceptr(aCoords) if (on_gpu)
   for (int i = 0; i < NUM_DIMENSIONS; i++) {
     end1Mid[i] = aCoords[i][mid] - aCoords[i][end1];
     end2Mid[i] = aCoords[i][mid] - aCoords[i][end2];
@@ -216,7 +213,6 @@ void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
       continue;
     }
 
-    #pragma acc parallel loop deviceptr(aCoords) if (on_gpu)
     for (int j = 0; j < NUM_DIMENSIONS; j++) {
       point[j] = aCoords[j][i] - mvector[j];
       dot += point[j] * normal[j];
@@ -226,7 +222,6 @@ void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
     cross[1] = point[0] * normal[2] - normal[0] * point[2];
     cross[2] = normal[0] * point[1] - point[0] * normal[1];
 
-    #pragma acc parallel loop deviceptr(aCoords) if (on_gpu)
     for (int j = 0; j < NUM_DIMENSIONS; j++) {
       point[j] = (normal[j] * dot * (1 - cos(theta)) + point[j] * cos(theta) +
                   cross[j] * sin(theta));
@@ -234,7 +229,6 @@ void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
     }
   }
 
-  #pragma acc parallel deviceptr(angleSizes) if (on_gpu)
   angleSizes[angleStart + angleIdx] += expandDeg;
 }
 
@@ -242,9 +236,8 @@ Real SimCalcs::bondEnergy(int molIdx) {
   Real out = 0;
   Real** bondData = GPUCopy::bondDataPtr();
   Real* bondLengths = GPUCopy::bondLengthsPtr();
-  int bondStart = sb->moleculeData[MOL_BOND_START][molIdx];
-  int bondEnd = bondStart + sb->moleculeData[MOL_BOND_COUNT][molIdx];
-  #pragma acc parallel loop deviceptr(bondData, bondLengths) if (on_gpu)
+  int bondStart = sb->moleculeData[MOL_BOND_START * sb->numMolecules + molIdx];
+  int bondEnd = bondStart + sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + molIdx];
   for (int i = bondStart; i < bondEnd; i++) {
     if ((bool)bondData[BOND_VARIABLE][i]) {
       Real diff = bondData[BOND_EQDIST][i] - bondLengths[i];
@@ -256,10 +249,10 @@ Real SimCalcs::bondEnergy(int molIdx) {
 
 void SimCalcs::stretchBond(int molIdx, int bondIdx, Real stretchDist) {
   Real* bondLengths = GPUCopy::bondLengthsPtr();
-  int bondStart = sb->moleculeData[MOL_BOND_START][molIdx];
-  int bondEnd = bondStart + sb->moleculeData[MOL_BOND_COUNT][molIdx];
-  int startIdx = sb->moleculeData[MOL_START][molIdx];
-  int molSize = sb->moleculeData[MOL_LEN][molIdx];
+  int bondStart = sb->moleculeData[MOL_BOND_START * sb->numMolecules + molIdx];
+  int bondEnd = bondStart + sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + molIdx];
+  int startIdx = sb->moleculeData[MOL_START * sb->numMolecules + molIdx];
+  int molSize = sb->moleculeData[MOL_LEN * sb->numMolecules + molIdx];
   int end1 = (int)sb->bondData[BOND_A1_IDX][bondStart + bondIdx];
   int end2 = (int)sb->bondData[BOND_A2_IDX][bondStart + bondIdx];
   Real** aCoords = GPUCopy::atomCoordinatesPtr();
@@ -286,7 +279,6 @@ void SimCalcs::stretchBond(int molIdx, int bondIdx, Real stretchDist) {
   // Move each atom the appropriate distance for the bond stretch
   Real v[NUM_DIMENSIONS];
   Real denon = 0.0;
-  #pragma acc parallel loop deviceptr(aCoords) if (on_gpu)
   for (int i = 0; i < NUM_DIMENSIONS; i++) {
     v[i] = aCoords[i][end2] - aCoords[i][end1];
     denon += v[i] * v[i];
@@ -297,12 +289,10 @@ void SimCalcs::stretchBond(int molIdx, int bondIdx, Real stretchDist) {
   }
   for (int i = 0; i < molSize; i++) {
     if (find(i) == side2) {
-      #pragma acc parallel loop deviceptr(aCoords) if (on_gpu)
       for (int j = 0; j < NUM_DIMENSIONS; j++) {
         aCoords[j][i + startIdx] += v[j] * stretchDist;
       }
     } else {
-      #pragma acc parallel loop deviceptr(aCoords) if (on_gpu)
       for (int j = 0; j < NUM_DIMENSIONS; j++) {
         aCoords[j][i + startIdx] -= v[j] * stretchDist;
       }
@@ -310,7 +300,6 @@ void SimCalcs::stretchBond(int molIdx, int bondIdx, Real stretchDist) {
   }
 
   // Record the actual bond stretch
-  #pragma acc parallel deviceptr(bondLengths) if (on_gpu)
   bondLengths[bondStart + bondIdx] += stretchDist;
 }
 
@@ -431,8 +420,8 @@ void SimCalcs::intermolecularMove(int molIdx) {
   Real maxT = sb->maxTranslate;
   Real maxR = sb->maxRotate;
 
-  int molStart = sb->moleculeData[MOL_START][molIdx];
-  int molLen = sb->moleculeData[MOL_LEN][molIdx];
+  int molStart = sb->moleculeData[MOL_START * sb->numMolecules + molIdx];
+  int molLen = sb->moleculeData[MOL_LEN * sb->numMolecules + molIdx];
 
   int vertexIdx = (int)randomReal(0, molLen);
 
@@ -448,12 +437,10 @@ void SimCalcs::intermolecularMove(int molIdx) {
   Real** aCoords = GPUCopy::atomCoordinatesPtr();
   Real* bSize = GPUCopy::sizePtr();
   int* pIdxes = GPUCopy::primaryIndexesPtr();
-  int** molData = GPUCopy::moleculeDataPtr();
+  int* molData = GPUCopy::moleculeDataPtr();
 
 
   // Do the move here
-  #pragma acc parallel loop deviceptr(aCoords, rBCoords) \
-      if (on_gpu)
   for (int i = 0; i < molLen; i++) {
     for (int j = 0; j < NUM_DIMENSIONS; j++) {
       rBCoords[j][i] = aCoords[j][molStart + i];
@@ -465,8 +452,6 @@ void SimCalcs::intermolecularMove(int molIdx) {
   }
 
 
-  #pragma acc parallel loop deviceptr(aCoords, molData, pIdxes, bSize) \
-      if (on_gpu)
   for (int i = 0; i < 1; i++) {
     aCoords[0][molStart + vertexIdx] += deltaX;
     aCoords[1][molStart + vertexIdx] += deltaY;
@@ -489,15 +474,15 @@ void SimCalcs::intramolecularMove(int molIdx) {
   Real newEnergy = 0, currentEnergy = calcIntraMolecularEnergy(molIdx);
 
   // TODO (blm): allow max to be configurable
-  int numBonds = sb->moleculeData[MOL_BOND_COUNT][molIdx];
-  int bondStart = sb->moleculeData[MOL_BOND_START][molIdx];
-  int numAngles = sb->moleculeData[MOL_ANGLE_COUNT][molIdx];
-  int angleStart = sb->moleculeData[MOL_ANGLE_START][molIdx];
+  int numBonds = sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + molIdx];
+  int bondStart = sb->moleculeData[MOL_BOND_START * sb->numMolecules + molIdx];
+  int numAngles = sb->moleculeData[MOL_ANGLE_COUNT * sb->numMolecules + molIdx];
+  int angleStart = sb->moleculeData[MOL_ANGLE_START * sb->numMolecules + molIdx];
   Real bondDelta = sb->maxBondDelta, angleDelta = sb->maxAngleDelta;
 
   // Handle bond moves
   if (ENABLE_BOND && sb->hasFlexibleBonds) {
-    int numBondsToMove = sb->moleculeData[MOL_BOND_COUNT][molIdx];
+    int numBondsToMove = sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + molIdx];
     if (numBondsToMove > 3) {
       numBondsToMove = (int)randomReal(2, numBonds);
       numBondsToMove = min(numBondsToMove, sb->maxIntraMoves);
@@ -529,7 +514,7 @@ void SimCalcs::intramolecularMove(int molIdx) {
 
   // Handle angle movements
   if (ENABLE_ANGLE && sb->hasFlexibleAngles) {
-    int numAnglesToMove = sb->moleculeData[MOL_ANGLE_COUNT][molIdx];
+    int numAnglesToMove = sb->moleculeData[MOL_ANGLE_COUNT * sb->numMolecules + molIdx];
     if (numAnglesToMove > 3) {
       numAnglesToMove = (int)randomReal(2, numAngles);
       numAnglesToMove = min(numAnglesToMove, sb->maxIntraMoves);
@@ -586,13 +571,12 @@ void SimCalcs::intramolecularMove(int molIdx) {
 }
 
 void SimCalcs::saveBonds(int molIdx) {
-  int** moleculeData = sb->moleculeData;
+  int* moleculeData = sb->moleculeData;
   Real* bondLengths = GPUCopy::bondLengthsPtr();
   Real* rbBondLengths = GPUCopy::rollBackBondsPtr();
-  int start = moleculeData[MOL_BOND_START][molIdx];
-  int count = moleculeData[MOL_BOND_COUNT][molIdx];
+  int start = moleculeData[MOL_BOND_START * sb->numMolecules + molIdx];
+  int count = moleculeData[MOL_BOND_COUNT * sb->numMolecules + molIdx];
 
-  #pragma acc parallel loop deviceptr(rbBondLengths, bondLengths) if (on_gpu)
   for (int i = 0; i < count; i++) {
     rbBondLengths[i + start] = bondLengths[i + start];
   }
@@ -601,10 +585,9 @@ void SimCalcs::saveBonds(int molIdx) {
 void SimCalcs::saveAngles(int molIdx) {
   Real* angleSizes = GPUCopy::angleSizesPtr();
   Real* rbAngleSizes = GPUCopy::rollBackAnglesPtr();
-  int start = sb->moleculeData[MOL_ANGLE_START][molIdx];
-  int count = sb->moleculeData[MOL_ANGLE_COUNT][molIdx];
+  int start = sb->moleculeData[MOL_ANGLE_START * sb->numMolecules + molIdx];
+  int count = sb->moleculeData[MOL_ANGLE_COUNT * sb->numMolecules + molIdx];
 
-  #pragma acc parallel loop deviceptr(rbAngleSizes, angleSizes) if (on_gpu)
   for (int i = 0; i < count; i++) {
     rbAngleSizes[i + start] = angleSizes[i + start];
   }
@@ -617,20 +600,20 @@ void SimCalcs::translateAtom(int aIdx, Real dX, Real dY, Real dZ,
   aCoords[Z_COORD][aIdx] += dZ;
 }
 
-void SimCalcs::keepMoleculeInBox(int molIdx, Real** aCoords, int** molData,
+void SimCalcs::keepMoleculeInBox(int molIdx, Real** aCoords, int* molData,
                                  int* pIdxes, Real* bSize) {
-  int start = molData[MOL_START][molIdx];
-  int end = start + molData[MOL_LEN][molIdx];
-  int pIdx = pIdxes[molData[MOL_PIDX_START][molIdx]];
+
+  int numMolecules = GPUCopy::getNumMolecules();
+  int start = molData[MOL_START * numMolecules + molIdx];
+  int end = start + molData[MOL_LEN * numMolecules + molIdx];
+  int pIdx = pIdxes[molData[MOL_PIDX_START * numMolecules + molIdx]];
 
   for (int i = 0; i < NUM_DIMENSIONS; i++) {
     if (aCoords[i][pIdx] < 0) {
-      #pragma acc loop independent 
       for (int j = start; j < end; j++) {
         aCoords[i][j] += bSize[i];
       }
     } else if (aCoords[i][pIdx] > bSize[i]) {
-      #pragma acc loop independent
       for (int j = start; j < end; j++) {
         aCoords[i][j] -= bSize[i];
       }
@@ -639,15 +622,13 @@ void SimCalcs::keepMoleculeInBox(int molIdx, Real** aCoords, int** molData,
 }
 
 void SimCalcs::rollback(int molIdx) {
-  int molStart = sb->moleculeData[MOL_START][molIdx];
-  int molLen = sb->moleculeData[MOL_LEN][molIdx];
+  int molStart = sb->moleculeData[MOL_START * sb->numMolecules + molIdx];
+  int molLen = sb->moleculeData[MOL_LEN * sb->numMolecules + molIdx];
 
   Real** aCoords = GPUCopy::atomCoordinatesPtr();
   Real** rBCoords = GPUCopy::rollBackCoordinatesPtr();
 
-  #pragma acc parallel loop deviceptr(aCoords, rBCoords) if (on_gpu)
   for (int i = 0; i < NUM_DIMENSIONS; i++) {
-    #pragma acc loop independent 
     for (int j = 0; j < molLen; j++) {
       aCoords[i][molStart + j] = rBCoords[i][j];
     }
@@ -659,26 +640,24 @@ void SimCalcs::rollback(int molIdx) {
 }
 
 void SimCalcs::rollbackBonds(int molIdx) {
-  int** moleculeData = sb->moleculeData;
+  int* moleculeData = sb->moleculeData;
   Real* bondLengths = GPUCopy::bondLengthsPtr();
   Real* rbBondLengths = GPUCopy::rollBackBondsPtr();
-  int start = moleculeData[MOL_BOND_START][molIdx];
-  int count = moleculeData[MOL_BOND_COUNT][molIdx];
+  int start = moleculeData[MOL_BOND_START * sb->numMolecules + molIdx];
+  int count = moleculeData[MOL_BOND_COUNT * sb->numMolecules + molIdx];
 
-  #pragma acc parallel loop deviceptr(bondLengths, rbBondLengths) if (on_gpu)
   for (int i = start; i < start + count; i++) {
     bondLengths[i] = rbBondLengths[i];
   }
 }
 
 void SimCalcs::rollbackAngles(int molIdx) {
-  int** moleculeData = sb->moleculeData;
+  int* moleculeData = sb->moleculeData;
   Real* angleSizes = GPUCopy::angleSizesPtr();
   Real* rbAngleSizes = GPUCopy::rollBackAnglesPtr();
-  int start = moleculeData[MOL_ANGLE_START][molIdx];
-  int count = moleculeData[MOL_ANGLE_COUNT][molIdx];
+  int start = moleculeData[MOL_ANGLE_START * sb->numMolecules + molIdx];
+  int count = moleculeData[MOL_ANGLE_COUNT * sb->numMolecules + molIdx];
 
-  #pragma acc parallel loop deviceptr(angleSizes, rbAngleSizes) if (on_gpu)
   for (int i = start; i < start + count; i++) {
     angleSizes[i] = rbAngleSizes[i];
   }

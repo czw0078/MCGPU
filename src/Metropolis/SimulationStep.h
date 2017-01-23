@@ -166,7 +166,7 @@ namespace SimCalcs {
    * @param atomCoords The coordinates of the atoms to check.
    * @return true if the molecules are in range, false otherwise.
    */
-  #pragma acc routine seq
+  __device__ __host__
   bool moleculesInRange(int p1Start, int p1End, int p2Start, int p2End,
                         Real** atomCoords, Real* bSize, int* primaryIndexes,
                         Real cutoff);
@@ -178,7 +178,7 @@ namespace SimCalcs {
    * @param a2 The atom index of the second atom.
    * @return The square of the distance between the atoms.
    */
-  #pragma acc routine seq
+  __device__ __host__
   Real calcAtomDistSquared(int a1, int a2, Real** aCoords,
                            Real* bSize);
 
@@ -190,7 +190,7 @@ namespace SimCalcs {
    * @param r2  The distance between the atoms, squared.
    * @return The Lennard - Jones potential from the two atoms' interaction.
    */
-  #pragma acc routine seq
+  __device__ __host__
   Real calcLJEnergy(int a1, int a2, Real r2, Real** aData);
 
   /**
@@ -201,7 +201,7 @@ namespace SimCalcs {
    * @param dimension The dimension the measurement must be made periodic in.
    * @return The measurement, scaled to be periodic.
    */
-  #pragma acc routine seq
+  __device__ __host__
   Real makePeriodic(Real x, int dimension, Real* bSize);
 
   /**
@@ -212,7 +212,7 @@ namespace SimCalcs {
    * @param r  The distance between the atoms.
    * @return The Coloumb potential from the two atoms' interaction.
    */
-  #pragma acc routine seq
+  __device__ __host__
   Real calcChargeEnergy(int a1, int a2, Real r, Real** aData);
 
   /**
@@ -222,7 +222,7 @@ namespace SimCalcs {
    * @param b The second real number.
    * @return sqrt(|a*b|), the geometric mean of the two numbers.
    */
-  #pragma acc routine seq
+  __device__ __host__
   Real calcBlending (Real a, Real b);
 
   /**
@@ -259,8 +259,8 @@ namespace SimCalcs {
    *
    * @param molIdx The index of the molecule to keep inside the box.
    */
-  #pragma acc routine seq
-  void keepMoleculeInBox(int molIdx, Real** aCoords, int** molData,
+  __device__ __host__
+  void keepMoleculeInBox(int molIdx, Real** aCoords, int* molData,
                          int* pIdxes, Real* bsize);
 
 
@@ -272,7 +272,7 @@ namespace SimCalcs {
    * @param dY The amount to translate in the y direction.
    * @param dZ The amount to tranlsate in the z direction.
    */
-  #pragma acc routine seq
+  __device__ __host__
   void translateAtom(int aIdx, Real dX, Real dY, Real dZ, Real** aCoords);
 
   /**
@@ -285,7 +285,7 @@ namespace SimCalcs {
    * @param rotY The amount of rotation around the y-axis that is done.
    * @param rotZ The amount of rotation around the z-axis that is done.
    */
-  #pragma acc routine seq
+  __device__ __host__
   void rotateAtom(int aIdx, int pivotIdx, Real rotX, Real rotY, Real rotZ,
                   Real** aCoords);
 
@@ -295,7 +295,7 @@ namespace SimCalcs {
    * @param aIdx The index of the atom to rotate.
    * @param angleDeg The angle to rotate it (in degrees).
    */
-  #pragma acc routine seq
+  __device__ __host__
   void rotateX(int aIdx, Real angleDeg, Real** aCoords);
 
   /**
@@ -304,7 +304,7 @@ namespace SimCalcs {
    * @param aIdx The index of the atom to rotate.
    * @param angleDeg The angle to rotate it (in degrees).
    */
-  #pragma acc routine seq
+  __device__ __host__
   void rotateY(int aIdx, Real angleDeg, Real** aCoords);
 
   /**
@@ -313,7 +313,7 @@ namespace SimCalcs {
    * @param aIdx The index of the atom to rotate.
    * @param angleDeg The angle to rotate it (in degrees).
    */
-  #pragma acc routine seq
+  __device__ __host__
   void rotateZ(int aIdx, Real angleDeg, Real** aCoords);
 
   /**

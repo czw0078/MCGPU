@@ -112,12 +112,14 @@ class SimBox {
   // ----- Molecule Information -----
 
   /**
-   * int[MOL_DATA_SIZE][numMolecules]
+   * int[MOL_DATA_SIZE * numMolecules]
+   * A linearized representation of int[MOL_DATA_SIZE][numMolecules] in row
+   * major order.
    * Holds information about the start atom index, the number of atoms in the
    * molecule, the start of the molecule's primary indexes, and the number of
    * primary indexes in the molecule.
    */
-  int** moleculeData;
+  int* moleculeData;
 
   /**
    * int[#of total primary indexes]
@@ -144,7 +146,7 @@ class SimBox {
   /**
    * Real[ATOM_DATA_SIZE][numAtoms]
    * Holds constant information about every atom, including sigma, epsilon, and
-   *     the atom's charge.
+   * the atom's charge.
    */
   Real** atomData;
 
@@ -319,7 +321,7 @@ class SimBox {
    *
    * @param molIdx The index of the molecule to keep inside the box.
    */
-  void keepMoleculeInBox(int molIdx, Real** aCoords, int** molData,
+  void keepMoleculeInBox(int molIdx, Real** aCoords, int* molData,
                          int* pIdxes, Real* bsize);
 
   /**

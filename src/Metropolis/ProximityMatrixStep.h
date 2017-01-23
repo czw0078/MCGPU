@@ -45,8 +45,7 @@ namespace ProximityMatrixCalcs {
   Real calcMolecularEnergyContribution(int currMol, int startMol,
                                        char *proximityMatrix);
 
-  #pragma acc routine vector
-  Real calcMoleculeInteractionEnergy (int m1, int m2, int** molData,
+  Real calcMoleculeInteractionEnergy (int m1, int m2, int* molData,
                                       Real** aData, Real** aCoords,
                                       Real* bSize);
 

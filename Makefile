@@ -92,13 +92,13 @@ UnitTestName := metrotest
 ##############################
 
 # Defines the compiler used to compile and link the source files.
-CC := pgc++
+CC := nvcc
 
 # Defines compiler-specific flags
 # Some of the GNU C++ library headers included by the Google Test
 # infrastructure use C++11 features (notably, variadic templates)
-ifeq ($(CC),pgc++)
-	CFLAGS := --c++11
+ifeq ($(CC),nvcc)
+	CFLAGS := --std=c++11 -lcudart
 else
 	CFLAGS := -std=c++11
 endif
@@ -114,15 +114,15 @@ IncPaths := . $(SourceDir) $(TestDir)
 
 # Compiler specific flags for the C++ compiler when generating .o files
 # and when generating .d files for dependency information
-ifeq ($(CC),pgc++)
-	CompileFlags := -c -acc -ta=nvidia -Minfo=accel
+ifeq ($(CC),nvcc)
+	CompileFlags := -x cu -arch=sm_20 -dc
 else
 	CompileFlags := -c
 endif
 
 # Flags for linking metrosim with the PGI compiler.
-ifeq ($(CC),pgc++)
-	LinkFlags := -acc -ta=nvidia -Minfo=accel
+ifeq ($(CC),nvcc)
+	LinkFlags := -arch=sm_20
 else
 	LinkFlags := -lgomp
 endif
@@ -133,13 +133,14 @@ DebugFlags := -g
 
 # The profile compiler flags add profiling hooks (which produce gmon.out)
 # as well as debugging symbols, but optimizations are still enabled
-ProfileFlags := -g -O3 -mp -pg
+ProfileFlags := -g -O3 -pg
 
 # The release build compiler flags that add optimization flags and remove
 # all symbol and relocation table information from the executable.
-ReleaseFlags := -O3 -s
-ifeq ($(CC),pgc++)
-	ReleaseFlags += -mp
+ReleaseFlags := -O3
+
+ifeq ($(CC),nvcc)
+	ReleaseFlags +=
 endif
 
 #############################
@@ -262,12 +263,12 @@ format_dep = sed -n "H;$$ {g;s@.*:\(.*\)@$(basename $@).o $@: \$$\(wildcard\1\)@
 
 # The command that will generate the dependency file (*.d) output for a given
 # C++ file using the C++ compiler
-create_dep_cpp = $(CC) $(CFLAGS) $(Includes) $(Defines) -MM $<
+create_dep_cpp = $(CC) $(CFLAGS) $(CompileFlags) $(Includes) $(Defines) $<
 
 # The command that will generate the dependency file (*.d) output for a given
 # unit testing file. These files are special because they use specific flags
 # that link the testing framework.
-create_dep_unittest = $(CC) $(CFLAGS) $(GTestFlags) $(Includes) $(Defines) -MM $<
+create_dep_unittest = $(CC) $(CFLAGS) $(GTestFlags) $(Includes) $(Defines) $<
 
 ##############################
 # Makefile Rules and Targets #

@@ -6,6 +6,10 @@
 
 bool parallel = false;
 
+// Scalars
+
+int numMolecules = 0;
+
 Real** h_atomData = NULL;
 Real** d_atomData = NULL;
 
@@ -18,8 +22,8 @@ Real** d_atomCoordinates = NULL;
 int* h_primaryIndexes = NULL;
 int* d_primaryIndexes = NULL;
 
-int** h_moleculeData = NULL;
-int** d_moleculeData = NULL;
+int* h_moleculeData = NULL;
+int* d_moleculeData = NULL;
 
 Real* h_size = NULL;
 Real* d_size = NULL;
@@ -64,7 +68,7 @@ int* GPUCopy::primaryIndexesPtr() {
   return parallel ? d_primaryIndexes : h_primaryIndexes;
 }
 
-int** GPUCopy::moleculeDataPtr() {
+int* GPUCopy::moleculeDataPtr() {
   return parallel ? d_moleculeData : h_moleculeData;
 }
 
@@ -94,7 +98,10 @@ Real* GPUCopy::rollBackAnglesPtr() {
 
 Real* GPUCopy::sizePtr() { return parallel ? d_size : h_size; }
 
+int GPUCopy::getNumMolecules() { return numMolecules; }
+
 void GPUCopy::copyIn(SimBox *sb) {
+  numMolecules = sb->numMolecules;
   h_moleculeData = sb->moleculeData;
   h_atomData = sb->atomData;
   h_atomCoordinates = sb->atomCoordinates;
@@ -109,115 +116,121 @@ void GPUCopy::copyIn(SimBox *sb) {
   h_rollBackAngleSizes = sb->rollBackAngleSizes;
   if (!parallel) { return; }
 
-#ifdef _OPENACC
-  d_moleculeData = (int**)acc_malloc(MOL_DATA_SIZE * sizeof(int*));
+  // Copy in moleculeData
+  cudaMalloc(&d_moleculeData, MOL_DATA_SIZE * sizeof(int) * sb->numMolecules);
   assert(d_moleculeData != NULL);
-  for (int row = 0; row < MOL_DATA_SIZE; row++) {
-    int *h_moleculeData_row = sb->moleculeData[row];
-    int *d_moleculeData_row = (int*)acc_copyin(h_moleculeData_row,
-                                               sb->numMolecules * sizeof(int));
-    assert(d_moleculeData_row != NULL);
-    #pragma acc parallel deviceptr(d_moleculeData)
-    d_moleculeData[row] = d_moleculeData_row;
-  }
+  cudaMemcpy(d_moleculeData, h_moleculeData, MOL_DATA_SIZE * sizeof(int) *
+    sb->numMolecules, cudaMemcpyHostToDevice);
 
-  d_atomData = (Real**)acc_malloc(ATOM_DATA_SIZE * sizeof(Real*));
+
+  cudaMalloc(&d_atomData, ATOM_DATA_SIZE * sizeof(Real*));
   assert(d_atomData != NULL);
+
+  Real* tmp_atomDataRows[ATOM_DATA_SIZE];
   for (int row = 0; row < ATOM_DATA_SIZE; row++) {
-    Real* h_atomData_row = sb->atomData[row];
-    Real* d_atomData_row = (Real*)acc_copyin(h_atomData_row, sb->numAtoms * sizeof(Real));
-    assert(d_atomData_row != NULL);
-    #pragma acc parallel deviceptr(d_atomData)
-    d_atomData[row] = d_atomData_row;
+    cudaMalloc( (void**)&tmp_atomDataRows[row], sizeof(Real) * sb->numAtoms);
+    cudaMemcpy(tmp_atomDataRows[row], sb->atomData[row], sizeof(Real)* sb->numAtoms,
+      cudaMemcpyHostToDevice);
   }
+  cudaMemcpy(d_atomData, tmp_atomDataRows, sizeof(tmp_atomDataRows), cudaMemcpyHostToDevice);
 
-  d_atomCoordinates = (Real**)acc_malloc(NUM_DIMENSIONS * sizeof(Real *));
+  cudaMalloc(&d_atomCoordinates, NUM_DIMENSIONS * sizeof(Real *));
   assert(d_atomCoordinates != NULL);
-  for (int row = 0; row < NUM_DIMENSIONS; row++) {
-    Real* h_atomCoordinates_row = sb->atomCoordinates[row];
-    Real* d_atomCoordinates_row = (Real *)acc_copyin(h_atomCoordinates_row, sb->numAtoms * sizeof(Real));
-    assert(d_atomCoordinates_row != NULL);
-    #pragma acc parallel deviceptr(d_atomCoordinates)
-    d_atomCoordinates[row] = d_atomCoordinates_row;
-  }
 
-  d_rollBackCoordinates = (Real**)acc_malloc(NUM_DIMENSIONS * sizeof(Real *));
+  Real* tmp_atomCoordinateRows[NUM_DIMENSIONS];
+  for (int row = 0; row < NUM_DIMENSIONS; row++) {
+    cudaMalloc( (void**)&tmp_atomCoordinateRows[row], sizeof(Real) * sb->numAtoms);
+    cudaMemcpy(tmp_atomCoordinateRows[row], sb->atomCoordinates[row], sizeof(Real) * sb->numAtoms,
+      cudaMemcpyHostToDevice);
+  }
+  cudaMemcpy(d_atomCoordinates, tmp_atomCoordinateRows, sizeof(tmp_atomCoordinateRows), cudaMemcpyHostToDevice);
+
+  cudaMalloc(&d_rollBackCoordinates, NUM_DIMENSIONS * sizeof(Real *));
   assert(d_rollBackCoordinates != NULL);
+
+  Real* tmp_rollBackCoordinateRows[NUM_DIMENSIONS];
   for (int row = 0; row < NUM_DIMENSIONS; row++) {
-    Real* h_rollBackCoordinates_row = sb->rollBackCoordinates[row];
-    Real* d_rollBackCoordinates_row = (Real *)acc_copyin(h_rollBackCoordinates_row, sb->largestMol * sizeof(Real));
-    assert(d_rollBackCoordinates_row != NULL);
-    #pragma acc parallel deviceptr(d_rollBackCoordinates)
-    d_rollBackCoordinates[row] = d_rollBackCoordinates_row;
+    cudaMalloc( (void**)&tmp_rollBackCoordinateRows[row], sizeof(Real) * sb->largestMol); 
+    cudaMemcpy(tmp_rollBackCoordinateRows[row], sb->rollBackCoordinates[row], sizeof(Real) * sb->largestMol,
+      cudaMemcpyHostToDevice);
   }
+  cudaMemcpy(d_rollBackCoordinates, tmp_rollBackCoordinateRows, NUM_DIMENSIONS * sizeof(Real *), cudaMemcpyHostToDevice);
 
-  d_primaryIndexes = (int*)acc_copyin(sb->primaryIndexes, sb->numPIdxes * sizeof(int));
+  cudaMalloc(&d_primaryIndexes, sb->numPIdxes * sizeof(int));
+  cudaMemcpy(d_primaryIndexes, sb->primaryIndexes, sb->numPIdxes * sizeof(int), cudaMemcpyHostToDevice);
 
-  d_size = (Real*)acc_copyin(sb->size, NUM_DIMENSIONS * sizeof(Real));
 
-  d_angleData = (Real**)acc_malloc(ANGLE_DATA_SIZE * sizeof(Real*));
+  cudaMalloc(&d_size, NUM_DIMENSIONS * sizeof(Real));
+  cudaMemcpy(d_size, sb->size, NUM_DIMENSIONS * sizeof(Real), cudaMemcpyHostToDevice);
+
+  cudaMalloc(&d_angleData, ANGLE_DATA_SIZE * sizeof(Real*));
   assert(d_angleData != NULL);
+
+  Real* tmp_angleDataRows[ANGLE_DATA_SIZE];
   for (int row = 0; row < ANGLE_DATA_SIZE; row++) {
-    Real *h_angleDataRow = sb->angleData[row];
-    Real *d_angleDataRow = (Real*)acc_copyin(h_angleDataRow, sb->numAngles * sizeof(Real));
-    assert(d_angleDataRow != NULL);
-    #pragma acc parallel deviceptr(d_angleData)
-    d_angleData[row] = d_angleDataRow;
+    cudaMalloc( (void**)&tmp_angleDataRows[row], sizeof(Real) * sb->numAngles);
+    cudaMemcpy(tmp_angleDataRows[row], sb->angleData[row], sb->numAngles * sizeof(Real), cudaMemcpyHostToDevice);
   }
+  cudaMemcpy(d_angleData, tmp_angleDataRows, sizeof(tmp_angleDataRows), cudaMemcpyHostToDevice);
 
-  d_angleSizes = (Real*)acc_copyin(sb->angleSizes,
-                                   sb->numAngles * sizeof(Real));
-  d_rollBackAngleSizes = (Real*)acc_copyin(sb->rollBackAngleSizes,
-                                           sb->numAngles * sizeof(Real));
+  cudaMalloc(&d_angleSizes, sb->numAngles * sizeof(Real));
+  assert(d_angleSizes != NULL);
+  cudaMemcpy(d_angleSizes, sb->angleSizes, sb->numAngles * sizeof(Real), cudaMemcpyHostToDevice);
 
-  d_bondData = (Real**)acc_malloc(BOND_DATA_SIZE * sizeof(Real*));
+  cudaMalloc(&d_rollBackAngleSizes, sb->numAngles * sizeof(Real));
+  assert(d_rollBackAngleSizes != NULL);
+  cudaMemcpy(d_rollBackAngleSizes, sb->rollBackAngleSizes, sb->numAngles * sizeof(Real), cudaMemcpyHostToDevice);
+
+
+  cudaMalloc(&d_bondData, BOND_DATA_SIZE * sizeof(Real*));
   assert(d_bondData != NULL);
-  for (int row = 0; row < BOND_DATA_SIZE; row++) {
-    Real *h_bondDataRow = sb->bondData[row];
-    Real *d_bondDataRow = (Real*)acc_copyin(h_bondDataRow, sb->numBonds * sizeof(Real));
-    assert(d_bondDataRow != NULL);
-    #pragma acc parallel deviceptr(d_bondData)
-    d_bondData[row] = d_bondDataRow;
-  }
 
-  d_bondLengths = (Real*)acc_copyin(sb->bondLengths, 
-                                    sb->numBonds * sizeof(Real));
-  d_rollBackBondLengths = (Real*)acc_copyin(sb->rollBackBondLengths, 
-                                            sb->numBonds * sizeof(Real));
-#endif
+  Real * tmp_bondDataRows[BOND_DATA_SIZE];
+  for (int row = 0; row < BOND_DATA_SIZE; row++) {
+    cudaMalloc( (void**)&tmp_bondDataRows[row], sizeof(Real) * sb->numBonds);
+    cudaMemcpy(tmp_bondDataRows[row], sb->bondData[row], sb->numBonds * sizeof(Real), cudaMemcpyHostToDevice);
+  }
+  cudaMemcpy(d_bondData, tmp_bondDataRows, sizeof(tmp_bondDataRows), cudaMemcpyHostToDevice);
+
+  cudaMalloc(&d_bondLengths, sb->numBonds * sizeof(Real));
+  assert(d_bondLengths != NULL);
+  cudaMemcpy(d_bondLengths, sb->bondLengths, sb->numBonds * sizeof(Real), cudaMemcpyHostToDevice);
+
+  cudaMalloc(&d_rollBackBondLengths, sb->numBonds * sizeof(Real));
+  assert(d_rollBackBondLengths != NULL);
+  cudaMemcpy(d_rollBackBondLengths, sb->rollBackBondLengths, sb->numBonds * sizeof(Real), cudaMemcpyHostToDevice);
 }
 
 void GPUCopy::copyOut(SimBox* sb) {
   if (!parallel) return;
 
-#ifdef _OPENACC
-  for (int row = 0; row < MOL_DATA_SIZE; row++) {
-    int *h_moleculeData_row = h_moleculeData[row];
-    acc_copyout(h_moleculeData_row, sb->numMolecules * sizeof(int));
-  }
+  // Copy out moleculeData.
+  cudaMemcpy(h_moleculeData, d_moleculeData, MOL_DATA_SIZE * sizeof(int) *
+    sb->numMolecules, cudaMemcpyDeviceToHost);
 
+  Real *tmp_atomDataRows[ATOM_DATA_SIZE];
+  cudaMemcpy(tmp_atomDataRows, d_atomData, MOL_DATA_SIZE * sizeof(Real*), cudaMemcpyDeviceToHost);
   for (int row = 0; row < ATOM_DATA_SIZE; row++) {
-    Real *h_atomData_row = h_atomData[row];
-    acc_copyout(h_atomData_row, sb->numAtoms * sizeof(Real));
+    cudaMemcpy(h_atomData[row], tmp_atomDataRows[row], sb->numAtoms * sizeof(Real), cudaMemcpyDeviceToHost);
   }
 
+  Real *tmp_atomCoordinateRows[NUM_DIMENSIONS];
+  cudaMemcpy(tmp_atomCoordinateRows, d_atomCoordinates, NUM_DIMENSIONS * sizeof(Real*), cudaMemcpyDeviceToHost);
   for (int row = 0; row < NUM_DIMENSIONS; row++) {
-    Real *h_atomCoordinates_row = h_atomCoordinates[row];
-    acc_copyout(h_atomCoordinates_row, sb->numAtoms * sizeof(Real));
+    cudaMemcpy(h_atomCoordinates[row], tmp_atomCoordinateRows[row], sb->numAtoms * sizeof(Real), cudaMemcpyDeviceToHost);
   }
 
+  Real *tmp_rollBackCoordinateRows[NUM_DIMENSIONS];
+  cudaMemcpy(tmp_rollBackCoordinateRows, d_rollBackCoordinates, NUM_DIMENSIONS * sizeof(Real*), cudaMemcpyDeviceToHost);
   for (int row = 0; row < NUM_DIMENSIONS; row++) {
-    Real *h_rollBackCoordinates_row = h_rollBackCoordinates[row];
-    acc_copyout(h_rollBackCoordinates_row, sb->largestMol * sizeof(Real));
+    cudaMemcpy(h_rollBackCoordinates[row], tmp_rollBackCoordinateRows[row], sb->largestMol * sizeof(Real), cudaMemcpyDeviceToHost);
   }
 
-  acc_copyout(h_primaryIndexes, sb->numPIdxes);
-  acc_copyout(h_size, NUM_DIMENSIONS);
-
-  acc_copyout(h_angleSizes, sb->numAngles);
-  acc_copyout(h_rollBackAngleSizes, sb->numAngles);
-  acc_copyout(h_bondLengths, sb->numBonds);
-  acc_copyout(h_rollBackBondLengths, sb->numBonds);
-#endif
+  cudaMemcpy(h_primaryIndexes, d_primaryIndexes, sb->numPIdxes * sizeof(int), cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_size, d_size, NUM_DIMENSIONS * sizeof(Real), cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_angleSizes, d_angleSizes, sb->numAngles * sizeof(Real), cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_rollBackAngleSizes, d_rollBackAngleSizes, sb->numAngles * sizeof(Real), cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_bondLengths, d_bondLengths , sb->numBonds* sizeof(Real), cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_rollBackBondLengths, d_rollBackBondLengths , sb->numBonds* sizeof(Real), cudaMemcpyDeviceToHost);
 }
 
