@@ -79,11 +79,12 @@ int SimCalcs::on_gpu;
 
 Real SimCalcs::calcIntraMolecularEnergy(int molIdx) {
   int* moleculeData = sb->moleculeData;
+  int numAtoms = sb->numAtoms;
   int molStart = moleculeData[MOL_START * sb->numMolecules + molIdx];
   int molEnd = molStart + moleculeData[MOL_LEN * sb->numMolecules + molIdx];
   int molType = moleculeData[MOL_TYPE * sb->numMolecules + molIdx];
   Real** aCoords = GPUCopy::atomCoordinatesPtr();
-  Real** atomData = sb->atomData;
+  Real* atomData = sb->atomData;
 
   Real out = 0.0;
   if (sb->hasFlexibleAngles) out += angleEnergy(molIdx);
@@ -117,8 +118,8 @@ Real SimCalcs::calcIntraMolecularEnergy(int molIdx) {
         if (fudgeFactor > 0.0) {
           Real r2 = calcAtomDistSquared(i, j, aCoords, sb->size);
           Real r = sqrt(r2);
-          Real energy = calcLJEnergy(i, j, r2, atomData);
-          energy += calcChargeEnergy(i, j, r, atomData);
+          Real energy = calcLJEnergy(i, j, r2, atomData, numAtoms);
+          energy += calcChargeEnergy(i, j, r, atomData, numAtoms);
           out += fudgeFactor * energy;
         }
       }
@@ -330,14 +331,15 @@ Real SimCalcs::calcAtomDistSquared(int a1, int a2, Real** aCoords,
   return dx * dx + dy * dy + dz * dz;
 }
 
-Real SimCalcs::calcLJEnergy(int a1, int a2, Real r2, Real** aData) {
+Real SimCalcs::calcLJEnergy(int a1, int a2, Real r2, Real* aData, int numAtoms) {
+
   if (r2 == 0.0) {
     return 0.0;
   } else {
-    const Real sigma = SimCalcs::calcBlending(aData[ATOM_SIGMA][a1],
-        aData[ATOM_SIGMA][a2]);
-    const Real epsilon = SimCalcs::calcBlending(aData[ATOM_EPSILON][a1],
-        aData[ATOM_EPSILON][a2]);
+    const Real sigma = SimCalcs::calcBlending(aData[ATOM_SIGMA * numAtoms + a1],
+        aData[ATOM_SIGMA * numAtoms + a2]);
+    const Real epsilon = SimCalcs::calcBlending(aData[ATOM_EPSILON * numAtoms + a1],
+        aData[ATOM_EPSILON * numAtoms + a2]);
 
     const Real s2r2 = pow(sigma, 2) / r2;
     const Real s6r6 = pow(s2r2, 3);
@@ -346,12 +348,13 @@ Real SimCalcs::calcLJEnergy(int a1, int a2, Real r2, Real** aData) {
   }
 }
 
-Real SimCalcs::calcChargeEnergy(int a1, int a2, Real r, Real** aData) {
+Real SimCalcs::calcChargeEnergy(int a1, int a2, Real r, Real* aData, int numAtoms) {
+
   if (r == 0.0) {
     return 0.0;
   } else {
     const Real e = 332.06;
-    return (aData[ATOM_CHARGE][a1] * aData[ATOM_CHARGE][a2] * e) / r;
+    return (aData[ATOM_CHARGE * numAtoms + a1] * aData[ATOM_CHARGE * numAtoms + a2] * e) / r;
   }
 }
 
@@ -456,7 +459,7 @@ void SimCalcs::intermolecularMove(int molIdx) {
     aCoords[0][molStart + vertexIdx] += deltaX;
     aCoords[1][molStart + vertexIdx] += deltaY;
     aCoords[2][molStart + vertexIdx] += deltaZ;
-    keepMoleculeInBox(molIdx, aCoords, molData, pIdxes, bSize);
+    keepMoleculeInBox(molIdx, aCoords, molData, pIdxes, bSize, sb->numMolecules);
   }
 }
 
@@ -601,9 +604,8 @@ void SimCalcs::translateAtom(int aIdx, Real dX, Real dY, Real dZ,
 }
 
 void SimCalcs::keepMoleculeInBox(int molIdx, Real** aCoords, int* molData,
-                                 int* pIdxes, Real* bSize) {
+                                 int* pIdxes, Real* bSize, int numMolecules) {
 
-  int numMolecules = GPUCopy::getNumMolecules();
   int start = molData[MOL_START * numMolecules + molIdx];
   int end = start + molData[MOL_LEN * numMolecules + molIdx];
   int pIdx = pIdxes[molData[MOL_PIDX_START * numMolecules + molIdx]];

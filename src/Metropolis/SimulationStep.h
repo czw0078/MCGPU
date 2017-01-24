@@ -191,7 +191,7 @@ namespace SimCalcs {
    * @return The Lennard - Jones potential from the two atoms' interaction.
    */
   __device__ __host__
-  Real calcLJEnergy(int a1, int a2, Real r2, Real** aData);
+  Real calcLJEnergy(int a1, int a2, Real r2, Real* aData, int numAtoms);
 
   /**
    * Given a distance, makes the distance periodic to mitigate distances
@@ -213,7 +213,7 @@ namespace SimCalcs {
    * @return The Coloumb potential from the two atoms' interaction.
    */
   __device__ __host__
-  Real calcChargeEnergy(int a1, int a2, Real r, Real** aData);
+  Real calcChargeEnergy(int a1, int a2, Real r, Real* aData, int numAtoms);
 
   /**
    * Calculates the geometric mean of two real numbers.
@@ -261,7 +261,7 @@ namespace SimCalcs {
    */
   __device__ __host__
   void keepMoleculeInBox(int molIdx, Real** aCoords, int* molData,
-                         int* pIdxes, Real* bsize);
+                         int* pIdxes, Real* bsize, int numMolecules);
 
 
   /**

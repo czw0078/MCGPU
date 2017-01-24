@@ -6,12 +6,8 @@
 
 bool parallel = false;
 
-// Scalars
-
-int numMolecules = 0;
-
-Real** h_atomData = NULL;
-Real** d_atomData = NULL;
+Real* h_atomData = NULL;
+Real* d_atomData = NULL;
 
 Real** h_rollBackCoordinates = NULL;
 Real** d_rollBackCoordinates = NULL;
@@ -54,7 +50,7 @@ void GPUCopy::setParallel(bool in) { parallel = in; }
 
 int GPUCopy::onGpu() { return parallel; }
 
-Real** GPUCopy::atomDataPtr() { return parallel ? d_atomData : h_atomData; }
+Real* GPUCopy::atomDataPtr() { return parallel ? d_atomData : h_atomData; }
 
 Real** GPUCopy::rollBackCoordinatesPtr() {
   return parallel ? d_rollBackCoordinates : h_rollBackCoordinates;
@@ -98,10 +94,7 @@ Real* GPUCopy::rollBackAnglesPtr() {
 
 Real* GPUCopy::sizePtr() { return parallel ? d_size : h_size; }
 
-int GPUCopy::getNumMolecules() { return numMolecules; }
-
 void GPUCopy::copyIn(SimBox *sb) {
-  numMolecules = sb->numMolecules;
   h_moleculeData = sb->moleculeData;
   h_atomData = sb->atomData;
   h_atomCoordinates = sb->atomCoordinates;
@@ -122,17 +115,12 @@ void GPUCopy::copyIn(SimBox *sb) {
   cudaMemcpy(d_moleculeData, h_moleculeData, MOL_DATA_SIZE * sizeof(int) *
     sb->numMolecules, cudaMemcpyHostToDevice);
 
-
-  cudaMalloc(&d_atomData, ATOM_DATA_SIZE * sizeof(Real*));
+  // Copy in atomData
+  cudaMalloc(&d_atomData, ATOM_DATA_SIZE * sizeof(Real*) * sb->numAtoms);
   assert(d_atomData != NULL);
+  cudaMemcpy(d_atomData, h_atomData, ATOM_DATA_SIZE * sizeof(Real*) *
+    sb->numAtoms, cudaMemcpyHostToDevice);
 
-  Real* tmp_atomDataRows[ATOM_DATA_SIZE];
-  for (int row = 0; row < ATOM_DATA_SIZE; row++) {
-    cudaMalloc( (void**)&tmp_atomDataRows[row], sizeof(Real) * sb->numAtoms);
-    cudaMemcpy(tmp_atomDataRows[row], sb->atomData[row], sizeof(Real)* sb->numAtoms,
-      cudaMemcpyHostToDevice);
-  }
-  cudaMemcpy(d_atomData, tmp_atomDataRows, sizeof(tmp_atomDataRows), cudaMemcpyHostToDevice);
 
   cudaMalloc(&d_atomCoordinates, NUM_DIMENSIONS * sizeof(Real *));
   assert(d_atomCoordinates != NULL);
@@ -208,11 +196,9 @@ void GPUCopy::copyOut(SimBox* sb) {
   cudaMemcpy(h_moleculeData, d_moleculeData, MOL_DATA_SIZE * sizeof(int) *
     sb->numMolecules, cudaMemcpyDeviceToHost);
 
-  Real *tmp_atomDataRows[ATOM_DATA_SIZE];
-  cudaMemcpy(tmp_atomDataRows, d_atomData, MOL_DATA_SIZE * sizeof(Real*), cudaMemcpyDeviceToHost);
-  for (int row = 0; row < ATOM_DATA_SIZE; row++) {
-    cudaMemcpy(h_atomData[row], tmp_atomDataRows[row], sb->numAtoms * sizeof(Real), cudaMemcpyDeviceToHost);
-  }
+  // Copy out atomData.
+  cudaMemcpy(h_atomData, d_atomData, ATOM_DATA_SIZE * sizeof(Real) *
+    sb->numAtoms, cudaMemcpyDeviceToHost);
 
   Real *tmp_atomCoordinateRows[NUM_DIMENSIONS];
   cudaMemcpy(tmp_atomCoordinateRows, d_atomCoordinates, NUM_DIMENSIONS * sizeof(Real*), cudaMemcpyDeviceToHost);

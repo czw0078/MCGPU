@@ -8,7 +8,7 @@ namespace GPUCopy {
   void copyOut(SimBox* sb);
   void setParallel(bool in);
 
-  Real** atomDataPtr();
+  Real* atomDataPtr();
 
   Real** rollBackCoordinatesPtr();
   Real** atomCoordinatesPtr();
@@ -25,9 +25,6 @@ namespace GPUCopy {
   int* moleculeDataPtr();
   Real* sizePtr();
   int onGpu();
-
-  __host__ __device__
-  int getNumMolecules();
 }
 
 

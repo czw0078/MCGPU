@@ -47,9 +47,10 @@ Real ProximityMatrixCalcs::calcMolecularEnergyContribution(
   Real **atomCoords = GPUCopy::atomCoordinatesPtr();
   Real *bSize = GPUCopy::sizePtr();
   int *pIdxes = GPUCopy::primaryIndexesPtr();
-  Real **aData = GPUCopy::atomDataPtr();
+  Real *aData = GPUCopy::atomDataPtr();
   Real cutoff = SimCalcs::sb->cutoff;
   const long numMolecules = SimCalcs::sb->numMolecules;
+  const int numAtoms = SimCalcs::sb->numAtoms;
 
   const int p1Start = SimCalcs::sb->moleculeData[MOL_PIDX_START * numMolecules + currMol];
   const int p1End = (SimCalcs::sb->moleculeData[MOL_PIDX_COUNT * numMolecules + currMol]
@@ -63,7 +64,8 @@ Real ProximityMatrixCalcs::calcMolecularEnergyContribution(
         if (SimCalcs::moleculesInRange(p1Start, p1End, p2Start, p2End,
                                        atomCoords, bSize, pIdxes, cutoff)) {
           total += calcMoleculeInteractionEnergy(currMol, otherMol, molData,
-                                                 aData, atomCoords, bSize);
+                                                 aData, atomCoords, bSize,
+                                                 numMolecules, numAtoms);
         }
       }
     }
@@ -74,7 +76,8 @@ Real ProximityMatrixCalcs::calcMolecularEnergyContribution(
         //int p2End = molData[MOL_PIDX_COUNT][otherMol] + p2Start;
         if (proximityMatrix[currMol*numMolecules + otherMol]) {
           total += calcMoleculeInteractionEnergy(currMol, otherMol, molData,
-                                                 aData, atomCoords, bSize);
+                                                 aData, atomCoords, bSize,
+                                                 numMolecules, numAtoms);
         }
       }
     }
@@ -86,12 +89,12 @@ Real ProximityMatrixCalcs::calcMolecularEnergyContribution(
 // TODO: Duplicate; abstract out when PGCC supports it
 Real ProximityMatrixCalcs::calcMoleculeInteractionEnergy (int m1, int m2,
                                                           int* molData,
-                                                          Real** aData,
+                                                          Real* aData,
                                                           Real** aCoords,
-                                                          Real* bSize) {
+                                                          Real* bSize,
+                                                          int numMolecules,
+                                                          int numAtoms) {
   Real energySum = 0;
-
-  const int numMolecules = GPUCopy::getNumMolecules();
 
   const int m1Start = molData[MOL_START * numMolecules + m1];
   const int m1End = molData[MOL_LEN * numMolecules + m1] + m1Start;
@@ -101,15 +104,15 @@ Real ProximityMatrixCalcs::calcMoleculeInteractionEnergy (int m1, int m2,
 
   for (int i = m1Start; i < m1End; i++) {
     for (int j = m2Start; j < m2End; j++) {
-      if (aData[ATOM_SIGMA][i] >= 0 && aData[ATOM_SIGMA][j] >= 0
-          && aData[ATOM_EPSILON][i] >= 0 && aData[ATOM_EPSILON][j] >= 0) {
+      if (aData[ATOM_SIGMA * numAtoms + i] >= 0 && aData[ATOM_SIGMA * numAtoms + j] >= 0
+          && aData[ATOM_EPSILON * numAtoms + i] >= 0 && aData[ATOM_EPSILON * numAtoms + j] >= 0) {
 
         const Real r2 = SimCalcs::calcAtomDistSquared(i, j, aCoords, bSize);
         if (r2 == 0.0) {
           energySum += 0.0;
         } else {
-          energySum += SimCalcs::calcLJEnergy(i, j, r2, aData);
-          energySum += SimCalcs::calcChargeEnergy(i, j, sqrt(r2), aData);
+          energySum += SimCalcs::calcLJEnergy(i, j, r2, aData, numAtoms);
+          energySum += SimCalcs::calcChargeEnergy(i, j, sqrt(r2), aData, numAtoms);
         }
       }
     }
@@ -126,7 +129,7 @@ char *ProximityMatrixCalcs::createProximityMatrix() {
   Real** atomCoords = GPUCopy::atomCoordinatesPtr();
   Real* bSize = GPUCopy::sizePtr();
   int* pIdxes = GPUCopy::primaryIndexesPtr();
-  Real** aData = GPUCopy::atomDataPtr();
+//  Real* aData = GPUCopy::atomDataPtr();
 
   char *matrix;
   #ifdef _OPENACC
@@ -162,7 +165,7 @@ void ProximityMatrixCalcs::updateProximityMatrix(char *matrix, int i) {
   Real** atomCoords = GPUCopy::atomCoordinatesPtr();
   Real* bSize = GPUCopy::sizePtr();
   int* pIdxes = GPUCopy::primaryIndexesPtr();
-  Real** aData = GPUCopy::atomDataPtr();
+//  Real* aData = GPUCopy::atomDataPtr();
 
   for (int j = 0; j < numMolecules; j++) {
     const int p1Start = molData[MOL_PIDX_START * numMolecules + i];

@@ -148,7 +148,7 @@ class SimBox {
    * Holds constant information about every atom, including sigma, epsilon, and
    * the atom's charge.
    */
-  Real** atomData;
+  Real* atomData;
 
   // ----- Bond information -----
 
@@ -464,7 +464,7 @@ class SimBox {
    * @param r2  The distance between the atoms, squared.
    * @return The Lennard - Jones potential from the two atoms' interaction.
    */
-  Real calcLJEnergy(int a1, int a2, const Real& r2, Real** aData);
+  Real calcLJEnergy(int a1, int a2, const Real& r2, Real* aData);
 
   /**
    * calcChargeEnergy Calculates the Coloumb potential between two atoms.
@@ -474,7 +474,7 @@ class SimBox {
    * @param r  The distance between the atoms.
    * @return The Coloumb potential from the two atoms' interaction.
    */
-  Real calcChargeEnergy(int a1, int a2, const Real& r, Real** aData);
+  Real calcChargeEnergy(int a1, int a2, const Real& r, Real* aData);
 
   /**
    * calcBlending Calculates the geometric mean of two real numbers.

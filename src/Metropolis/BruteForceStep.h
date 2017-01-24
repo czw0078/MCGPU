@@ -59,7 +59,7 @@ namespace BruteForceCalcs {
    * @return true if the molecules are in range, false otherwise.
    */
   Real calcMoleculeInteractionEnergy (int m1, int m2, int* molData,
-                                      Real** aData, Real** aCoords,
+                                      Real* aData, Real** aCoords,
                                       Real* bSize);
 }
 
