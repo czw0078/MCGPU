@@ -276,11 +276,14 @@ create_dep_unittest = $(CC) $(CFLAGS) $(GTestFlags) $(Includes) $(Defines) $<
 
 # Specifies that these make targets are not actual files and therefore will
 # not break if a similar named file exists in the directory.
-.PHONY : all tests $(AppName) $(UnitTestName) dirtree clean
+.PHONY : all tests $(AppName) $(UnitTestName) dirtree clean cleanDependencyObjs
 
 # The list of build targets that the user can specify
 
-all : $(AppName)
+all : $(AppName) cleanDependencyObjs
+
+cleanDependencyObjs:
+	rm -f *.o
 
 tests : $(AppName) $(UnitTestName)
 
