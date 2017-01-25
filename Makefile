@@ -285,7 +285,7 @@ all : $(AppName) cleanDependencyObjs
 cleanDependencyObjs:
 	rm -f *.o
 
-tests : $(AppName) $(UnitTestName)
+tests : $(AppName) $(UnitTestName) cleanDependencyObjs
 
 $(AppName) : $(Objects) $(ProgramMain) | dirtree
 	$(CC) $^ $(CFLAGS) $(Includes) $(Defines) -o $(AppDir)/$@ $(LinkFlags)
