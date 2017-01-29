@@ -73,8 +73,8 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
   sb->numBonds = nBonds;
   sb->numAngles = nAngles;
 
-  sb->rollBackCoordinates = new Real*[NUM_DIMENSIONS];
-  sb->atomCoordinates = new Real*[NUM_DIMENSIONS];
+  sb->rollBackCoordinates = new Real[NUM_DIMENSIONS * nAtoms];
+  sb->atomCoordinates = new Real[NUM_DIMENSIONS * nAtoms];
   sb->atomData = new Real[ATOM_DATA_SIZE * sb->numAtoms];
   sb->moleculeData = new int[MOL_DATA_SIZE * sb->numMolecules];
   sb->bondData = new Real*[BOND_DATA_SIZE];
@@ -85,11 +85,6 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
   sb->largestMol = largestMolecule;
   sb->angleSizes = new Real[nAngles];
   sb->rollBackAngleSizes = new Real[nAngles];
-
-  for (int i = 0; i < NUM_DIMENSIONS; i++) {
-    sb->atomCoordinates[i] = new Real[sb->numAtoms];
-    sb->rollBackCoordinates[i] = new Real[largestMolecule];
-  }
 
   for (int i = 0; i < BOND_DATA_SIZE; i++) {
     sb->bondData[i] = new Real[sb->numBonds];
@@ -120,9 +115,9 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
       sb->atomData[ATOM_SIGMA * sb->numAtoms + atomIdx] = a.sigma;
       sb->atomData[ATOM_EPSILON * sb->numAtoms + atomIdx] = a.epsilon;
       sb->atomData[ATOM_CHARGE * sb->numAtoms + atomIdx] = a.charge;
-      sb->atomCoordinates[X_COORD][atomIdx] = a.x;
-      sb->atomCoordinates[Y_COORD][atomIdx] = a.y;
-      sb->atomCoordinates[Z_COORD][atomIdx] = a.z;
+      sb->atomCoordinates[X_COORD * sb->numAtoms + atomIdx] = a.x;
+      sb->atomCoordinates[Y_COORD * sb->numAtoms + atomIdx] = a.y;
+      sb->atomCoordinates[Z_COORD * sb->numAtoms + atomIdx] = a.z;
       atomIdx++;
     }
 
@@ -320,7 +315,7 @@ void SimBoxBuilder::fillNLC() {
     int pIdx = sb->primaryIndexes[sb->moleculeData[MOL_PIDX_START * sb->numMolecules + i]];
     int cloc[3];
     for (int j = 0; j < NUM_DIMENSIONS; j++) {
-      cloc[j] = sb->getCell(sb->atomCoordinates[j][pIdx], j);
+      cloc[j] = sb->getCell(sb->atomCoordinates[j * sb-> numMolecules + pIdx], j);
     }
     sb->nlc_heap[i].next = sb->neighborCells[cloc[0]][cloc[1]][cloc[2]];
     sb->nlc_heap[i].index = i;

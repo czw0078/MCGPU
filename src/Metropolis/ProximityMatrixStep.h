@@ -46,7 +46,7 @@ namespace ProximityMatrixCalcs {
                                        char *proximityMatrix);
 
   Real calcMoleculeInteractionEnergy (int m1, int m2, int* molData,
-                                      Real* aData, Real** aCoords,
+                                      Real* aData, Real* aCoords,
                                       Real* bSize, int numMols, int numAtoms);
 
   char *createProximityMatrix();

@@ -322,7 +322,9 @@ void Simulation::saveState(const std::string& baseFileName, int simStep, const S
 
   log.verbose("Saving state file " + stateOutputPath );
 
-  statescan.outputState(box->getEnvironment(), box->getMolecules(), box->getMoleculeCount(), simStep, stateOutputPath, sb->atomCoordinates);
+  statescan.outputState(box->getEnvironment(), box->getMolecules(),
+                        box->getMoleculeCount(), simStep, stateOutputPath,
+                        sb->atomCoordinates, sb->numAtoms);
 }
 
 int Simulation::writePDB(Environment sourceEnvironment, Molecule* sourceMoleculeCollection, SimBox* sb) {
@@ -346,7 +348,7 @@ int Simulation::writePDB(Environment sourceEnvironment, Molecule* sourceMolecule
   pdbFile << "REMARK Created by MCGPU" << std::endl;
   int atomIdx = 0;
 
-  Real** atomCoords = sb->atomCoordinates;
+  Real* atomCoords = sb->atomCoordinates;
 
   for (int i = 0; i < numOfMolecules; i++) {
     Molecule currentMol = sourceMoleculeCollection[i];
@@ -367,11 +369,11 @@ int Simulation::writePDB(Environment sourceEnvironment, Molecule* sourceMolecule
       pdbFile.setf(std::ios_base::fixed, std::ios_base::floatfield);
       pdbFile.precision(3);
       pdbFile.width(12);
-      pdbFile << atomCoords[0][atomIdx];
+      pdbFile << atomCoords[atomIdx];
       pdbFile.width(8);
-      pdbFile << atomCoords[1][atomIdx];
+      pdbFile << atomCoords[sb->numAtoms + atomIdx];
       pdbFile.width(8);
-      pdbFile << atomCoords[2][atomIdx] << std::endl;
+      pdbFile << atomCoords[2 * sb->numAtoms + atomIdx] << std::endl;
       atomIdx++;
     }
     pdbFile << "TER" << std::endl;

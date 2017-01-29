@@ -492,7 +492,9 @@ void StateScanner::parsePrimaryIndexDefinitions(Environment* enviro, string defi
 
 
 
-void StateScanner::outputState(Environment *environment, Molecule *molecules, int numOfMolecules, int step, string filename, Real** atomCoords) {
+void StateScanner::outputState(Environment *environment, Molecule *molecules,
+                               int numOfMolecules, int step, string filename,
+                               Real* atomCoords, int nAtoms) {
   ofstream outFile;
   outFile.open(filename.c_str());
   outFile << environment->x << " " << environment->y << " "
@@ -520,8 +522,8 @@ void StateScanner::outputState(Environment *environment, Molecule *molecules, in
       Atom currentAtom = currentMol.atoms[j];
 
       outFile << currentAtom.id << " "
-              << atomCoords[0][aIdx] << " " << atomCoords[1][aIdx]
-              << " " << atomCoords[2][aIdx] << " "
+              << atomCoords[aIdx] << " " << atomCoords[nAtoms + aIdx]
+              << " " << atomCoords[2 * nAtoms + aIdx] << " "
               << currentAtom.sigma << " "
               << currentAtom.epsilon << " "
               << currentAtom.charge << " "

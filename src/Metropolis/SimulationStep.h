@@ -168,8 +168,8 @@ namespace SimCalcs {
    */
   __device__ __host__
   bool moleculesInRange(int p1Start, int p1End, int p2Start, int p2End,
-                        Real** atomCoords, Real* bSize, int* primaryIndexes,
-                        Real cutoff);
+                        Real* atomCoords, Real* bSize, int* primaryIndexes,
+                        Real cutoff, int numAtoms);
 
   /**
    * Calculates the square of the distance between two atoms.
@@ -179,8 +179,8 @@ namespace SimCalcs {
    * @return The square of the distance between the atoms.
    */
   __device__ __host__
-  Real calcAtomDistSquared(int a1, int a2, Real** aCoords,
-                           Real* bSize);
+  Real calcAtomDistSquared(int a1, int a2, Real* aCoords,
+                           Real* bSize, int numAtoms);
 
   /**
    * Calculates the Lennard - Jones potential between two atoms.
@@ -260,8 +260,8 @@ namespace SimCalcs {
    * @param molIdx The index of the molecule to keep inside the box.
    */
   __device__ __host__
-  void keepMoleculeInBox(int molIdx, Real** aCoords, int* molData,
-                         int* pIdxes, Real* bsize, int numMolecules);
+  void keepMoleculeInBox(int molIdx, Real* aCoords, int* molData, int* pIdxes,
+                         Real* bsize, int numMolecules, int numAtoms);
 
 
   /**
@@ -273,7 +273,8 @@ namespace SimCalcs {
    * @param dZ The amount to tranlsate in the z direction.
    */
   __device__ __host__
-  void translateAtom(int aIdx, Real dX, Real dY, Real dZ, Real** aCoords);
+  void translateAtom(int aIdx, Real dX, Real dY, Real dZ, Real* aCoords,
+                     int numAtoms);
 
   /**
    * Given an atom to rotate, its pivot point, and the amounts to rotate,
@@ -287,7 +288,7 @@ namespace SimCalcs {
    */
   __device__ __host__
   void rotateAtom(int aIdx, int pivotIdx, Real rotX, Real rotY, Real rotZ,
-                  Real** aCoords);
+                  Real* aCoords, int numAtoms);
 
   /**
    * Given an atom and an amount to rotate, rotates about the x-axis.
@@ -296,7 +297,7 @@ namespace SimCalcs {
    * @param angleDeg The angle to rotate it (in degrees).
    */
   __device__ __host__
-  void rotateX(int aIdx, Real angleDeg, Real** aCoords);
+  void rotateX(int aIdx, Real angleDeg, Real* aCoords, int numAtoms);
 
   /**
    * Given an atom and an amount to rotate, rotates it about the y-axis.
@@ -305,7 +306,7 @@ namespace SimCalcs {
    * @param angleDeg The angle to rotate it (in degrees).
    */
   __device__ __host__
-  void rotateY(int aIdx, Real angleDeg, Real** aCoords);
+  void rotateY(int aIdx, Real angleDeg, Real* aCoords, int numAtoms);
 
   /**
    * Given an atom and an amount to rotate, rotates it about the z-axis.
@@ -314,7 +315,7 @@ namespace SimCalcs {
    * @param angleDeg The angle to rotate it (in degrees).
    */
   __device__ __host__
-  void rotateZ(int aIdx, Real angleDeg, Real** aCoords);
+  void rotateZ(int aIdx, Real angleDeg, Real* aCoords, int numAtoms);
 
   /**
    * Roll back a molecule to its original poisition. Performs translation and

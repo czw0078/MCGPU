@@ -11,7 +11,7 @@ int SimBox::findNeighbors(int molIdx) {
 
   int base[3];
   for (int i = 0; i < 3; i++) {
-    base[i] = getCell(atomCoordinates[i][pIdx], i);
+    base[i] = getCell(atomCoordinates[i * numAtoms + pIdx], i);
   }
 
   for (int i = -1; i <= 1; i++) {
@@ -47,7 +47,7 @@ void SimBox::updateNLC(int molIdx) {
   int newCell[3];
   int pIdx = primaryIndexes[moleculeData[numMolecules * MOL_PIDX_START + molIdx]];
   for (int i = 0; i < NUM_DIMENSIONS; i++) {
-    newCell[i] = getCell(atomCoordinates[i][pIdx], i);
+    newCell[i] = getCell(atomCoordinates[i * numAtoms + pIdx], i);
     if (newCell[i] != prevCell[i])
       update = true;
   }

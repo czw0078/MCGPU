@@ -48,6 +48,17 @@ namespace BruteForceCalcs {
   Real calcMolecularEnergyContribution(int currMol, int startMol);
 
   /**
+   * Determines the energy contribution of a particular molecule, but on GPU.
+   *
+   * @param currMol The index of the molecule to calculate the contribution of
+   * @param startMol The index of the molecule to begin searching from to
+   * determine interaction energies.
+   * @return The total energy of the box (discounts initial lj &
+   * charge energy)
+   */
+  __global__ 
+  void calcMolecularEnergyContributionGPU(int currMol, int startMol, SimBox* sb);
+  /**
    * Determines whether or not two molecule's primaryIndexes are within the
    * cutoff range of one another.
    *
@@ -58,9 +69,8 @@ namespace BruteForceCalcs {
    * @param atomCoords The coordinates of the atoms to check.
    * @return true if the molecules are in range, false otherwise.
    */
-  Real calcMoleculeInteractionEnergy (int m1, int m2, int* molData,
-                                      Real* aData, Real** aCoords,
-                                      Real* bSize);
+  __device__ __host__
+  Real calcMoleculeInteractionEnergy (int m1, int m2, SimBox* sb);
 }
 
 #endif

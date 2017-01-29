@@ -23,6 +23,8 @@ class SimBox {
   int stepNum;
 
   // ----- Basic Environment Conditions -----
+  
+  Real energy;
 
   /**
    * Real[3] Holds the box's dimensions.
@@ -134,14 +136,14 @@ class SimBox {
    * Holds the coordinates of every atom in the box. Which atom belongs to
    * which molecule is specified in moleculeData.
    */
-  Real** atomCoordinates;
+  Real* atomCoordinates;
 
   /**
    * Real[3][# of atoms in largest molecule]
    * Holds the previous coordinates of every atom in the most recently moved
    * molecule. Used when rolling back a molecule following a rejected step.
    */
-  Real** rollBackCoordinates;
+  Real* rollBackCoordinates;
 
   /**
    * Real[ATOM_DATA_SIZE][numAtoms]

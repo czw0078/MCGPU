@@ -593,7 +593,7 @@ class StateScanner {
    */
   void outputState(Environment *environment, Molecule *molecules,
                    int numOfMolecules, int step, string filename,
-                   Real** atomCoords);
+                   Real* atomCoords, int numAtoms);
 };
 
 /**

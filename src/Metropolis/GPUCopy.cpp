@@ -1,16 +1,15 @@
-#ifdef _OPENACC
-#include <openacc.h>
-#endif
-
 #include "GPUCopy.h"
 
-bool parallel = false;
+bool launchOnGpu = false;
+
+SimBox* h_sb = NULL;
+SimBox* d_sb = NULL;
 
 Real* h_atomData = NULL;
 Real* d_atomData = NULL;
 
-Real** h_rollBackCoordinates = NULL;
-Real** d_rollBackCoordinates = NULL;
+Real* h_rollBackCoordinates = NULL;
+Real* d_rollBackCoordinates = NULL;
 
 Real** h_atomCoordinates = NULL;
 Real** d_atomCoordinates = NULL;
@@ -46,111 +45,78 @@ Real* d_bondLengths = NULL;
 Real* h_rollBackBondLengths = NULL;
 Real* d_rollBackBondLengths = NULL;
 
-void GPUCopy::setParallel(bool in) { parallel = in; }
-
-int GPUCopy::onGpu() { return parallel; }
-
-Real* GPUCopy::atomDataPtr() { return parallel ? d_atomData : h_atomData; }
-
-Real** GPUCopy::rollBackCoordinatesPtr() {
-  return parallel ? d_rollBackCoordinates : h_rollBackCoordinates;
+bool GPUCopy::onGpu() {
+  return launchOnGpu;
 }
 
-Real** GPUCopy::atomCoordinatesPtr() {
-  return parallel ? d_atomCoordinates : h_atomCoordinates;
+void GPUCopy::setParallel(bool launchOnGpu_in) {
+  launchOnGpu = launchOnGpu_in;
 }
 
-int* GPUCopy::primaryIndexesPtr() {
-  return parallel ? d_primaryIndexes : h_primaryIndexes;
+SimBox* GPUCopy::simBoxGPU() {
+  return d_sb;
 }
 
-int* GPUCopy::moleculeDataPtr() {
-  return parallel ? d_moleculeData : h_moleculeData;
+SimBox* GPUCopy::simBoxCPU() {
+  return h_sb;
 }
-
-Real** GPUCopy::bondDataPtr() {
-  return parallel ? d_bondData : h_bondData;
-}
-
-Real* GPUCopy::bondLengthsPtr() {
-  return parallel ? d_bondLengths : h_bondLengths;
-}
-
-Real* GPUCopy::rollBackBondsPtr() {
-  return parallel ? d_rollBackBondLengths : h_rollBackBondLengths;
-}
-
-Real** GPUCopy::angleDataPtr() {
-  return parallel ? d_angleData : h_angleData;
-}
-
-Real* GPUCopy::angleSizesPtr() {
-  return parallel ? d_angleSizes : h_angleSizes;
-}
-
-Real* GPUCopy::rollBackAnglesPtr() {
-  return parallel ? d_rollBackAngleSizes : h_rollBackAngleSizes;
-}
-
-Real* GPUCopy::sizePtr() { return parallel ? d_size : h_size; }
 
 void GPUCopy::copyIn(SimBox *sb) {
-  h_moleculeData = sb->moleculeData;
-  h_atomData = sb->atomData;
-  h_atomCoordinates = sb->atomCoordinates;
-  h_rollBackCoordinates = sb->rollBackCoordinates;
-  h_size = sb->size;
-  h_primaryIndexes = sb->primaryIndexes;
-  h_bondData = sb->bondData;
-  h_bondLengths = sb->bondLengths;
-  h_rollBackBondLengths = sb->rollBackBondLengths;
-  h_angleData = sb->angleData;
-  h_angleSizes = sb->angleSizes;
-  h_rollBackAngleSizes = sb->rollBackAngleSizes;
-  if (!parallel) { return; }
+  h_sb = sb;
+
+  cudaMalloc(&d_sb, sizeof(SimBox));
+  assert(d_sb != NULL);
+  cudaMemcpy(d_sb, h_sb, sizeof(SimBox), cudaMemcpyHostToDevice);
 
   // Copy in moleculeData
   cudaMalloc(&d_moleculeData, MOL_DATA_SIZE * sizeof(int) * sb->numMolecules);
   assert(d_moleculeData != NULL);
   cudaMemcpy(d_moleculeData, h_moleculeData, MOL_DATA_SIZE * sizeof(int) *
     sb->numMolecules, cudaMemcpyHostToDevice);
+  cudaMemcpy(&(d_sb->moleculeData), &d_moleculeData, sizeof(int*),
+    cudaMemcpyHostToDevice);
 
   // Copy in atomData
-  cudaMalloc(&d_atomData, ATOM_DATA_SIZE * sizeof(Real*) * sb->numAtoms);
+  cudaMalloc(&d_atomData, ATOM_DATA_SIZE * sizeof(Real) * sb->numAtoms);
   assert(d_atomData != NULL);
-  cudaMemcpy(d_atomData, h_atomData, ATOM_DATA_SIZE * sizeof(Real*) *
+  cudaMemcpy(d_atomData, h_atomData, ATOM_DATA_SIZE * sizeof(Real) *
     sb->numAtoms, cudaMemcpyHostToDevice);
+  cudaMemcpy(&(d_sb->atomData), &d_atomData, sizeof(Real*),
+    cudaMemcpyHostToDevice);
 
-
-  cudaMalloc(&d_atomCoordinates, NUM_DIMENSIONS * sizeof(Real *));
+  // Copy in atomCoordinates
+  cudaMalloc(&d_atomCoordinates, NUM_DIMENSIONS * sizeof(Real) * sb->numAtoms);
   assert(d_atomCoordinates != NULL);
+  cudaMemcpy(d_atomCoordinates, h_atomCoordinates, NUM_DIMENSIONS *
+    sizeof(Real) * sb->numAtoms, cudaMemcpyHostToDevice);
+  cudaMemcpy(&(d_sb->atomCoordinates), &d_atomCoordinates, sizeof(Real*),
+    cudaMemcpyHostToDevice);
 
-  Real* tmp_atomCoordinateRows[NUM_DIMENSIONS];
-  for (int row = 0; row < NUM_DIMENSIONS; row++) {
-    cudaMalloc( (void**)&tmp_atomCoordinateRows[row], sizeof(Real) * sb->numAtoms);
-    cudaMemcpy(tmp_atomCoordinateRows[row], sb->atomCoordinates[row], sizeof(Real) * sb->numAtoms,
-      cudaMemcpyHostToDevice);
-  }
-  cudaMemcpy(d_atomCoordinates, tmp_atomCoordinateRows, sizeof(tmp_atomCoordinateRows), cudaMemcpyHostToDevice);
-
-  cudaMalloc(&d_rollBackCoordinates, NUM_DIMENSIONS * sizeof(Real *));
+  // Copy in rollBackCoordinates
+  cudaMalloc(&d_rollBackCoordinates, NUM_DIMENSIONS * sizeof(Real)
+    * sb->numAtoms);
   assert(d_rollBackCoordinates != NULL);
+  cudaMemcpy(d_rollBackCoordinates, h_rollBackCoordinates, NUM_DIMENSIONS *
+    sizeof(Real) * sb->numAtoms, cudaMemcpyHostToDevice);
+  cudaMemcpy(&(d_sb->rollBackCoordinates), &d_rollBackCoordinates,
+    sizeof(Real*), cudaMemcpyHostToDevice);
 
-  Real* tmp_rollBackCoordinateRows[NUM_DIMENSIONS];
-  for (int row = 0; row < NUM_DIMENSIONS; row++) {
-    cudaMalloc( (void**)&tmp_rollBackCoordinateRows[row], sizeof(Real) * sb->largestMol); 
-    cudaMemcpy(tmp_rollBackCoordinateRows[row], sb->rollBackCoordinates[row], sizeof(Real) * sb->largestMol,
-      cudaMemcpyHostToDevice);
-  }
-  cudaMemcpy(d_rollBackCoordinates, tmp_rollBackCoordinateRows, NUM_DIMENSIONS * sizeof(Real *), cudaMemcpyHostToDevice);
-
+  // Copy in primaryIndexes
   cudaMalloc(&d_primaryIndexes, sb->numPIdxes * sizeof(int));
-  cudaMemcpy(d_primaryIndexes, sb->primaryIndexes, sb->numPIdxes * sizeof(int), cudaMemcpyHostToDevice);
+  assert(d_primaryIndexes != NULL);
+  cudaMemcpy(d_primaryIndexes, sb->primaryIndexes, sb->numPIdxes * sizeof(int),
+    cudaMemcpyHostToDevice);
+  cudaMemcpy(&(d_sb->primaryIndexes), &d_primaryIndexes, sizeof(int*),
+    cudaMemcpyHostToDevice);
 
-
+  // Copy in box size
   cudaMalloc(&d_size, NUM_DIMENSIONS * sizeof(Real));
-  cudaMemcpy(d_size, sb->size, NUM_DIMENSIONS * sizeof(Real), cudaMemcpyHostToDevice);
+  assert(d_size != NULL);
+  cudaMemcpy(d_size, sb->size, NUM_DIMENSIONS * sizeof(Real),
+    cudaMemcpyHostToDevice);
+  cudaMemcpy(&(d_sb->size), &d_size, sizeof(Real*), cudaMemcpyHostToDevice);
 
+  // TODO - ANGLE AND BOND DATA
   cudaMalloc(&d_angleData, ANGLE_DATA_SIZE * sizeof(Real*));
   assert(d_angleData != NULL);
 
@@ -190,8 +156,6 @@ void GPUCopy::copyIn(SimBox *sb) {
 }
 
 void GPUCopy::copyOut(SimBox* sb) {
-  if (!parallel) return;
-
   // Copy out moleculeData.
   cudaMemcpy(h_moleculeData, d_moleculeData, MOL_DATA_SIZE * sizeof(int) *
     sb->numMolecules, cudaMemcpyDeviceToHost);
@@ -200,23 +164,30 @@ void GPUCopy::copyOut(SimBox* sb) {
   cudaMemcpy(h_atomData, d_atomData, ATOM_DATA_SIZE * sizeof(Real) *
     sb->numAtoms, cudaMemcpyDeviceToHost);
 
-  Real *tmp_atomCoordinateRows[NUM_DIMENSIONS];
-  cudaMemcpy(tmp_atomCoordinateRows, d_atomCoordinates, NUM_DIMENSIONS * sizeof(Real*), cudaMemcpyDeviceToHost);
-  for (int row = 0; row < NUM_DIMENSIONS; row++) {
-    cudaMemcpy(h_atomCoordinates[row], tmp_atomCoordinateRows[row], sb->numAtoms * sizeof(Real), cudaMemcpyDeviceToHost);
-  }
+  // Copy out atomCoordinates and rollback coordinates.
+  cudaMemcpy(h_atomCoordinates, d_atomCoordinates, NUM_DIMENSIONS *
+    sizeof(Real), cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_rollBackCoordinates, d_rollBackCoordinates, sb->largestMol *
+    sizeof(Real), cudaMemcpyDeviceToHost);
 
-  Real *tmp_rollBackCoordinateRows[NUM_DIMENSIONS];
-  cudaMemcpy(tmp_rollBackCoordinateRows, d_rollBackCoordinates, NUM_DIMENSIONS * sizeof(Real*), cudaMemcpyDeviceToHost);
-  for (int row = 0; row < NUM_DIMENSIONS; row++) {
-    cudaMemcpy(h_rollBackCoordinates[row], tmp_rollBackCoordinateRows[row], sb->largestMol * sizeof(Real), cudaMemcpyDeviceToHost);
-  }
+  // Copy out primaryIndexes
+  cudaMemcpy(h_primaryIndexes, d_primaryIndexes, sb->numPIdxes * sizeof(int),
+    cudaMemcpyDeviceToHost);
 
-  cudaMemcpy(h_primaryIndexes, d_primaryIndexes, sb->numPIdxes * sizeof(int), cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_size, d_size, NUM_DIMENSIONS * sizeof(Real), cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_angleSizes, d_angleSizes, sb->numAngles * sizeof(Real), cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_rollBackAngleSizes, d_rollBackAngleSizes, sb->numAngles * sizeof(Real), cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_bondLengths, d_bondLengths , sb->numBonds* sizeof(Real), cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_rollBackBondLengths, d_rollBackBondLengths , sb->numBonds* sizeof(Real), cudaMemcpyDeviceToHost);
+  // Copy out box dimensions
+  cudaMemcpy(h_size, d_size, NUM_DIMENSIONS * sizeof(Real),
+    cudaMemcpyDeviceToHost);
+
+  // Copy out angles and angle rollback data.
+  cudaMemcpy(h_angleSizes, d_angleSizes, sb->numAngles * sizeof(Real),
+    cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_rollBackAngleSizes, d_rollBackAngleSizes, sb->numAngles *
+    sizeof(Real), cudaMemcpyDeviceToHost);
+
+  // Copy out bonds and bond length data.
+  cudaMemcpy(h_bondLengths, d_bondLengths , sb->numBonds * sizeof(Real),
+    cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_rollBackBondLengths, d_rollBackBondLengths , sb->numBonds *
+    sizeof(Real), cudaMemcpyDeviceToHost);
 }
 
