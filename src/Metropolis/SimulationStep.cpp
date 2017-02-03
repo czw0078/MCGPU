@@ -45,7 +45,6 @@ Real SimulationStep::calcSystemEnergy(Real &subLJ, Real &subCharge,
 
   Real total = subLJ + subCharge;
   for (int mol = 0; mol < numMolecules; mol++) {
-    total += calcMoleculeEnergy(mol, mol);
 
     if (VERBOSE) {
       inter += calcMolecularEnergyContribution(mol, mol);
@@ -56,6 +55,9 @@ Real SimulationStep::calcSystemEnergy(Real &subLJ, Real &subCharge,
       totalBondE += bondE;
       totalAngleE += angleE;
       totalNonBondE += nonBondE;
+      total = inter + intra + totalBondE + totalAngleE + totalNonBondE;
+    } else {
+      total += calcMoleculeEnergy(mol, mol);
     }
 
   }
@@ -306,9 +308,11 @@ void SimCalcs::stretchBond(int molIdx, int bondIdx, Real stretchDist) {
   bondLengths[bondStart + bondIdx] += stretchDist;
 }
 
+__device__ __host__
 bool SimCalcs::moleculesInRange(int p1Start, int p1End, int p2Start, int p2End,
                                 Real* atomCoords, Real* bSize,
                                 int* primaryIndexes, Real cutoff, int nAtoms) {
+
   bool out = false;
   for (int p1Idx = p1Start; p1Idx < p1End; p1Idx++) {
     int p1 = primaryIndexes[p1Idx];
@@ -321,8 +325,10 @@ bool SimCalcs::moleculesInRange(int p1Start, int p1End, int p2Start, int p2End,
   return out;
 }
 
+__device__ __host__
 Real SimCalcs::calcAtomDistSquared(int a1, int a2, Real* aCoords,
                                    Real* bSize, int nAtoms) {
+
   Real dx = makePeriodic(aCoords[X_COORD * nAtoms + a2] - aCoords[X_COORD * nAtoms + a1],
                          X_COORD, bSize);
   Real dy = makePeriodic(aCoords[Y_COORD * nAtoms + a2] - aCoords[Y_COORD * nAtoms + a1],

@@ -17,6 +17,7 @@
 #include "CommandParsing.h"
 #include "Metropolis/Simulation.h"
 #include "Metropolis/SimulationArgs.h"
+#include "Metropolis/GPUCopy.h"
 
 
 namespace metrosim {

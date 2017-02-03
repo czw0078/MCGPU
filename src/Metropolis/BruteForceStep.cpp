@@ -1,15 +1,25 @@
 #include "BruteForceStep.h"
+#include "SimBoxConstants.h"
 #include "SimulationStep.h"
 #include "GPUCopy.h"
 
 
 Real BruteForceStep::calcMolecularEnergyContribution(int currMol,
                                                      int startMol) {
+
+
   if (GPUCopy::onGpu()) {
+    Real* devPtr;
+    cudaMemcpy(&devPtr, &(GPUCopy::simBoxGPU()->atomCoordinates), sizeof(Real), cudaMemcpyDeviceToHost);
+
     BruteForceCalcs::calcMolecularEnergyContributionGPU<<<1,1>>>(currMol,
                                                                  startMol,
                                                                  GPUCopy::simBoxGPU());
+
+    cudaMemcpy(&devPtr, &(GPUCopy::simBoxGPU()->atomCoordinates), sizeof(Real), cudaMemcpyDeviceToHost);
+
     Real energy;
+    cudaDeviceSynchronize();
     cudaMemcpy(&energy, &(GPUCopy::simBoxGPU()->energy), sizeof(Real), cudaMemcpyDeviceToHost);
     return energy;
   } else {
@@ -24,6 +34,8 @@ __global__
 void BruteForceCalcs::calcMolecularEnergyContributionGPU(int currMol,
                                                          int startMol,
                                                          SimBox* sb) {
+
+
   Real total = 0;
 
   int* molData = sb->moleculeData;
