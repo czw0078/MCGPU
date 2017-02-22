@@ -308,6 +308,94 @@ void SimCalcs::stretchBond(int molIdx, int bondIdx, Real stretchDist) {
   bondLengths[bondStart + bondIdx] += stretchDist;
 }
 
+Real SimCalcs::torsionEnergy(int molIdx) {
+  //TODO: write some code up in here
+  return 0;
+}
+
+void SimCalcs::twistBond(int molIdx, int bondIdx, Real twistDeg) {
+  Real* bondLengths = sb->bondLengths;
+  int bondStart = sb->moleculeData[MOL_BOND_START * sb->numMolecules + molIdx];
+  int bondEnd = bondStart + sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + molIdx];
+  int startIdx = sb->moleculeData[MOL_START * sb->numMolecules + molIdx];
+  int molSize = sb->moleculeData[MOL_LEN * sb->numMolecules + molIdx];
+  int end1 = (int)sb->bondData[BOND_A1_IDX][bondStart + bondIdx];
+  int end2 = (int)sb->bondData[BOND_A2_IDX][bondStart + bondIdx];
+  Real* aCoords = sb->atomCoordinates;
+  int numAtoms = sb->numAtoms;
+
+  for (int i = 0; i < molSize; i++) {
+    sb->unionFindParent[i] = i;
+  }
+
+  // Split the molecule atoms into two disjoint sets around the bond
+  for (int i = bondStart; i < bondEnd; i++) {
+    if (i == bondIdx + bondStart)
+      continue;
+    int a1 = (int)sb->bondData[BOND_A1_IDX][i] - startIdx;
+    int a2 = (int)sb->bondData[BOND_A2_IDX][i] - startIdx;
+    unionAtoms(a1, a2);
+  }
+  int side1 = find(end1 - startIdx);
+  int side2 = find(end2 - startIdx);
+  if (side1 == side2) {
+    // std::cerr << "ERROR: TWISTING BOND IN A RING!" << std::endl;
+    return;
+  }
+
+  Real DEG2RAD = 3.14159256358979323846264 / 180.0;
+  Real bondAxis[NUM_DIMENSIONS];
+  Real mvector[NUM_DIMENSIONS];
+  // Calculate the bond axis
+  for (int i = 0; i < NUM_DIMENSIONS; i++) {
+    bondAxis[i] = aCoords[i * numAtoms + end2] - aCoords[i * numAtoms + end1];
+    mvector[i] = aCoords[i * numAtoms + end1];
+  }
+
+  Real bondAxisLen = 0.0;
+  for (int i = 0; i < NUM_DIMENSIONS; i++) {
+    bondAxisLen += bondAxis[i] * bondAxis[i];
+  }
+  bondAxisLen = sqrt(bondAxisLen);
+  for (int i = 0; i < NUM_DIMENSIONS; i++) {
+    bondAxis[i] = bondAxis[i] / bondAxisLen;
+  }
+
+  // Move each atom by rotating it around the bond axis
+  for (int i = startIdx; i < startIdx + molSize; i++) {
+    Real theta;
+    Real point[NUM_DIMENSIONS];
+    Real dot = 0.0;
+    Real cross[NUM_DIMENSIONS];
+    if (find(i - startIdx) == group1) {
+      theta = expandDeg * -DEG2RAD;
+    } else if (find(i - startIdx) == group2) {
+      theta = expandDeg * DEG2RAD;
+    } else {
+      continue;
+    }
+
+    for (int j = 0; j < NUM_DIMENSIONS; j++) {
+      point[j] = aCoords[j * numAtoms + i] - mvector[j];
+      dot += point[j] * bondAxis[j];
+    }
+
+    cross[0] = bondAxis[1] * point[2] - point[1] * bondAxis[2];
+    cross[1] = point[0] * bondAxis[2] - bondAxis[0] * point[2];
+    cross[2] = bondAxis[0] * point[1] - point[0] * bondAxis[1];
+
+    for (int j = 0; j < NUM_DIMENSIONS; j++) {
+      point[j] = (bondAxis[j] * dot * (1 - cos(theta)) + point[j] * cos(theta) +
+                  cross[j] * sin(theta));
+      aCoords[j * numAtoms + i] = point[j] + mvector[j];
+    }
+  }
+
+  // Record the bond twist
+  //TODO
+
+}
+
 __device__ __host__
 bool SimCalcs::moleculesInRange(int p1Start, int p1End, int p2Start, int p2End,
                                 Real* atomCoords, Real* bSize,
@@ -557,6 +645,8 @@ void SimCalcs::intramolecularMove(int molIdx) {
   }
 
   // TODO: Put dihedral movements here
+
+  //STEPHEN
 
   // Tune the deltas to acheive 40% intramolecular acceptance ratio
   // FIXME: Make interval configurable

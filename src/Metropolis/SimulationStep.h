@@ -156,6 +156,25 @@ namespace SimCalcs {
   void stretchBond(int molIdx, int bondIdx, Real stretchDist);
 
   /**
+   * Calculates the energy from twisted bonds within the given molecule.
+   *
+   * @param molIdx The index of the molecule to calculate the energy of.
+   * @return The energy produced by bonds being twisted from their
+   *     equilibrium dihedral. //TODO phrasing
+   */
+  Real torsionEnergy(int molIdx);
+
+  /**
+   * Twists the given bond in the given molecule
+   *
+   * @param molIdx The index of the molecule that the angle is in.
+   * @param bondIdx The index of the bond within the molecule. For example, the
+   *     first bond in molecule 12 has index 0.
+   * @param twistDeg The amount to twist the angle. TODO more details here
+   */
+  void twistBond(int molIdx, int bondIdx, Real twistDeg);
+
+  /**
    * Determines whether or not two molecule's primaryIndexes are within the
    * cutoff range of one another.
    *
