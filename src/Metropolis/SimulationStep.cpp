@@ -314,7 +314,6 @@ Real SimCalcs::torsionEnergy(int molIdx) {
 }
 
 void SimCalcs::twistBond(int molIdx, int bondIdx, Real twistDeg) {
-  Real* bondLengths = sb->bondLengths;
   int bondStart = sb->moleculeData[MOL_BOND_START * sb->numMolecules + molIdx];
   int bondEnd = bondStart + sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + molIdx];
   int startIdx = sb->moleculeData[MOL_START * sb->numMolecules + molIdx];
@@ -336,9 +335,9 @@ void SimCalcs::twistBond(int molIdx, int bondIdx, Real twistDeg) {
     int a2 = (int)sb->bondData[BOND_A2_IDX][i] - startIdx;
     unionAtoms(a1, a2);
   }
-  int side1 = find(end1 - startIdx);
-  int side2 = find(end2 - startIdx);
-  if (side1 == side2) {
+  int group1 = find(end1 - startIdx);
+  int group2 = find(end2 - startIdx);
+  if (group1 == group2) {
     // std::cerr << "ERROR: TWISTING BOND IN A RING!" << std::endl;
     return;
   }
@@ -368,9 +367,9 @@ void SimCalcs::twistBond(int molIdx, int bondIdx, Real twistDeg) {
     Real dot = 0.0;
     Real cross[NUM_DIMENSIONS];
     if (find(i - startIdx) == group1) {
-      theta = expandDeg * -DEG2RAD;
+      theta = twistDeg * -DEG2RAD;
     } else if (find(i - startIdx) == group2) {
-      theta = expandDeg * DEG2RAD;
+      theta = twistDeg * DEG2RAD;
     } else {
       continue;
     }
