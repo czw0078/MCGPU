@@ -3,6 +3,8 @@
 
 #include "SimBox.h"
 #include "Utilities/FileUtilities.h"
+#include "Metropolis/SimulationArgs.h"
+//#include "Metropolis/SerialSim/VerletList.h"
 
 class SimBoxBuilder {
 
@@ -60,7 +62,7 @@ public:
    * @param sbData Points to SBScanner, which retrieves information about bonds
    *     and angles from oplsaa.sb.
    */
-  SimBoxBuilder(bool useNLC, SBScanner* sbData);
+  SimBoxBuilder(SimulationArgs* args, SBScanner* sbData);
 
   /**
    * Driver function for SimBoxBuilder. Constructs and returns a simulation box

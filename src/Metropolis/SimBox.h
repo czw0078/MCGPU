@@ -1,11 +1,12 @@
 #ifndef SIMBOX_H
 #define SIMBOX_H
-
+//#define NAMESPACE
 #include "Box.h"
 #include "Utilities/StructLibrary.h"
 #include "Utilities/MathLibrary.h"
 #include "SimBoxConstants.h"
 #include "DataTypes.h"
+//#include "Metropolis/SerialSim/VerletList.h"
 
 #include <stdlib.h>
 #include <vector>
@@ -246,6 +247,11 @@ class SimBox {
   bool useNLC;
 
   /**
+   * True if verlet list is being used, false otherwise
+   */
+  bool useVerlet;
+
+  /**
    * int[3]
    * Holds the number of cells in each dimension.
    */
@@ -280,6 +286,16 @@ class SimBox {
    * examined if that node is the head of its linked list.
    */
   NLC_Node* prevNode;
+
+  /*
+   * TEMPORARY 
+   */
+  Box* verletListBox;
+
+  /**
+   * The cutuff value to use in the verlet list
+   */
+  Real verletCutoff;
 
   /**
    * int[3]
@@ -611,8 +627,6 @@ class SimBox {
    * @return The representative element of the atom index.
    */
   int find (int atomIdx);
-
-
 };
 
 typedef const SimBox & refBox;

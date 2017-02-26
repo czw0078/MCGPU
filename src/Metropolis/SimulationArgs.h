@@ -45,6 +45,7 @@ namespace Strategy {
     Default,
     BruteForce,
     ProximityMatrix,
+    VerletList,
     Unknown
   };
 
@@ -97,6 +98,9 @@ struct SimulationArgs {
 
   /** The number of simultion steps between updating the neighborlist */
   int neighborListInterval;
+
+  /** Enables or disables use of verlet list */
+  bool useVerletList;
 
   /**
    * The number of simulation steps between status updates printed to

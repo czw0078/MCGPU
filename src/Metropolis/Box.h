@@ -24,6 +24,7 @@
 #include "Metropolis/DataTypes.h"
 #include "Utilities/StructLibrary.h"
 #include "SerialSim/NeighborList.h"
+//#include "Metropolis/SerialSim/VerletList.h"
 
 #define FREE(ptr) if(ptr!=NULL) { free(ptr);ptr=NULL;}
 
@@ -116,6 +117,11 @@ class Box
 		 */
 		NeighborList *neighborList;
 
+        /**
+         *
+         */
+//        VerletList *verletList;
+
 		/**
 		 * The number of atoms in the box.
 		 */
@@ -197,6 +203,17 @@ class Box
 		 */
 		void createNeighborList();
 
+        /**
+         *  Getter method for verletList
+         *  @return A pointer to the box's verlet list
+         */
+//        VerletList* getVerletList() { return verletList; };
+
+        /**
+         * Creates the box's verlet list
+         */
+//        void createVerletList();
+
     /**
 		 * Chooses a random molecule to be changed for a given simulation step.
 		 *
@@ -267,6 +284,8 @@ class Box
 		 * @return Returns the periodic position.
 		 */
 		Real wrapBox(Real x, Real boxDim, int position);
+
+        unsigned long getChangedMolSize() { return sizeof(changedMol); } ;
 
 };
 

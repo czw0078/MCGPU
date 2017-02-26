@@ -1,9 +1,10 @@
 #include "SimBoxBuilder.h"
 
 
-SimBoxBuilder::SimBoxBuilder(bool useNLC, SBScanner* sbData_in) {
+SimBoxBuilder::SimBoxBuilder(SimulationArgs* args, SBScanner* sbData_in) {
   sb = new SimBox();
-  sb->useNLC = useNLC;
+  sb->useNLC = args->useNeighborList;
+  sb->useVerlet = args->useVerletList;
   sbData = sbData_in;
 }
 
@@ -13,8 +14,14 @@ SimBox* SimBoxBuilder::build(Box* box) {
   initEnvironment(box->environment);
   addMolecules(box->molecules, box->environment->primaryAtomIndexArray->size());
   addPrimaryIndexes(box->environment->primaryAtomIndexArray);
-  if (sb->useNLC) {
+
+  if (sb->useNLC) 
     fillNLC();
+  else if(sb->useVerlet){ 
+    sb->verletListBox = box;
+    // Verlet cutoff is 28.175% larger than radius cutoff
+    // See resource note at top of VerletStep.cpp
+    sb->verletCutoff = 1.28175 * pow(box->getEnvironment()->cutoff, 2);
   }
   return sb;
 }
@@ -322,3 +329,10 @@ void SimBoxBuilder::fillNLC() {
     sb->neighborCells[cloc[0]][cloc[1]][cloc[2]] = &(sb->nlc_heap[i]);
   }
 }
+
+
+
+
+
+
+
