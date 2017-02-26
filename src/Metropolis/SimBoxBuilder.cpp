@@ -330,9 +330,3 @@ void SimBoxBuilder::fillNLC() {
   }
 }
 
-
-
-
-
-
-

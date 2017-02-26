@@ -42,10 +42,6 @@ void Box::createNeighborList() {
 	neighborList = new NeighborList(molecules, environment);
 }
 
-//void Box::createVerletList() {
-//    verletList = new VerletList(molecules, environment, sizeof(changedMol), false);
-//}
-
 int Box::chooseMolecule() {
 	return (int) randomReal(0, environment->numOfMolecules);
 }
@@ -181,11 +177,4 @@ Real Box::wrapBox(Real x, Real boxDim, int position) {
 
   return x;
 }
-
-
-
-
-
-
-
 

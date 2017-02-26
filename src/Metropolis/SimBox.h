@@ -1,12 +1,11 @@
 #ifndef SIMBOX_H
 #define SIMBOX_H
-//#define NAMESPACE
+
 #include "Box.h"
 #include "Utilities/StructLibrary.h"
 #include "Utilities/MathLibrary.h"
 #include "SimBoxConstants.h"
 #include "DataTypes.h"
-//#include "Metropolis/SerialSim/VerletList.h"
 
 #include <stdlib.h>
 #include <vector>

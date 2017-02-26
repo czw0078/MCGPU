@@ -83,8 +83,6 @@ class VerletStep : public SimulationStep {
      * Calculates the squared diestance between two atoms
      */
 	Real calcAtomDist(Atom atom1, Atom atom2, Environment *enviro);
-	
-
 };
 #endif
 

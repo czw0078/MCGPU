@@ -4,7 +4,6 @@
 #include "SimBox.h"
 #include "Utilities/FileUtilities.h"
 #include "Metropolis/SimulationArgs.h"
-//#include "Metropolis/SerialSim/VerletList.h"
 
 class SimBoxBuilder {
 
