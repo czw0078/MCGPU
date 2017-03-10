@@ -8,6 +8,8 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
+#include <string>
+
 #include "SimulationArgs.h"
 #include "Box.h"
 #include "Utilities/Logger.h"
@@ -47,9 +49,12 @@ class Simulation
     /** Pointer to the SB Scanner used to create the box */
     SBScanner *sbScanner;
 
+    std::string getPDBName();
+
     /** Writes the final state of the application to a PDB file */
     int writePDB(Environment sourceEnvironment,
-                 Molecule *sourceMoleculeCollection, SimBox* sb);
+                 Molecule *sourceMoleculeCollection,
+                 SimBox* sb, std::string pdbName);
 
     /** Saves the state of the simulation to a file */
     void saveState(const std::string& simName, int simStep, const SimBox* sb);

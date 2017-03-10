@@ -470,7 +470,7 @@ bool buildBoxData(Environment* enviro, vector<Molecule>& molecVec, Box* box,
       box->molecules[offset+n].id=offset+n;
       box->molecules[offset+n].atoms = box->molecules[n].atoms + count[0] * m;
       box->molecules[offset+n].bonds = box->molecules[n].bonds + count[1] * m;
-      box->molecules[offset+n].angles = box->molecules[n].angles 
+      box->molecules[offset+n].angles = box->molecules[n].angles
         + count[2] * m;
       box->molecules[offset+n].dihedrals = box->molecules[n].dihedrals
         + count[3] * m;
@@ -507,6 +507,8 @@ bool buildBoxData(Environment* enviro, vector<Molecule>& molecVec, Box* box,
     for(int k = 0; k < count[3]; k++) {
       box->dihedrals[m * count[3] + k].atom1 += m * count[0];
       box->dihedrals[m * count[3] + k].atom2 += m * count[0];
+      box->dihedrals[m * count[3] + k].atom3 += m * count[0];
+      box->dihedrals[m * count[3] + k].atom4 += m * count[0];
     }
 
     // Copy hops for each molecule.

@@ -183,20 +183,32 @@ struct Angle {
 };
 
 /**
+  Structure used to represent the 4 Fourier Coeficients
+*/
+struct Fourier {
+    Real vValues[4];
+};
+
+/**
  * Structure representing a dihedral in the atom.  A dihedral is the angle
- * created by two planes.  The structure is defined using two atoms. 
+ * created by two planes.  The structure is defined using two atoms.
  * It is up to the programmer to find the other two atoms needed to define two
  * planes.
  */
 struct Dihedral {
-    /** The first atom in the dihedral */
+    /** The endpoints of the dihedral*/
     int atom1;
-
-    /** The second atom in the dihedral */
     int atom2;
 
-    /** The distance between the atoms; used to be "value" */
+    /** The inner atoms of the dihedral*/
+    int atom3;
+    int atom4;
+
+    /** The initial angle between the planes, in degrees */
     Real value;
+
+    /** Stores the Fourier Sum constants for the dihedral*/
+    Fourier fourierInfo;
 
     /** True if the distance between atoms is variable */
     bool variable;
@@ -251,12 +263,6 @@ struct Hop {
     }
 };
 
-/**
-  Structure used to represent the 4 Fourier Coeficients
-*/
-struct Fourier {
-    Real vValues[4];
-};
 
 struct Atom {
   std::string *name;

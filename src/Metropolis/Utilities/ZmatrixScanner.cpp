@@ -161,8 +161,20 @@ void ZmatrixScanner::parseLine(string line, int numOfLines) {
     if (dihedralWith.compare("0") != 0) {
       lineDihedral.atom1 = lineAtom.id;
       lineDihedral.atom2 = atoi(dihedralWith.c_str());
+      lineDihedral.atom3 = atoi(bondWith.c_str());
+      lineDihedral.atom4 = atoi(angleWith.c_str());
       lineDihedral.value = atof(dihedralMeasure.c_str());
+
+      printf("new atom: %d %d %d %d\n",
+        lineDihedral.atom1,
+        lineDihedral.atom2,
+        lineDihedral.atom3,
+        lineDihedral.atom4);
+
       lineDihedral.variable = false;
+      // TODO 1
+      // use oplsScanner->getFourier to get Fourier Constants, and insert into lineDihedral
+      // lineDihedral.fourierInfo = oplsScnner->getFourier(???)
       dihedralVector.push_back(lineDihedral);
     }
 
@@ -489,9 +501,13 @@ vector<Molecule> ZmatrixScanner::buildMolecule(int startingID) {
     for (int i = 0; i < newMolecule.numOfDihedrals; i++) {
       int atom1ID = newMolecule.dihedrals[i].atom1 - 1;
       int atom2ID = newMolecule.dihedrals[i].atom2 - 1;
+      int atom3ID = newMolecule.dihedrals[i].atom3 - 1;
+      int atom4ID = newMolecule.dihedrals[i].atom4 - 1;
 
-			newMolecule.dihedrals[i].atom1 = atom1ID + startingID;
+      newMolecule.dihedrals[i].atom1 = atom1ID + startingID;
       newMolecule.dihedrals[i].atom2 = atom2ID + startingID;
+      newMolecule.dihedrals[i].atom3 = atom3ID + startingID;
+      newMolecule.dihedrals[i].atom4 = atom4ID + startingID;
     }
 
     for (int i = 0; i < newMolecule.numOfHops; i++) {
@@ -570,4 +586,3 @@ void ZmatrixScanner::addImpliedAngles(vector<Angle>& angleVector,
     angleVector.push_back(toAdd[i]);
   }
 }
-

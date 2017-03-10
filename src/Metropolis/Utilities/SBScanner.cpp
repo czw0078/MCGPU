@@ -135,6 +135,6 @@ Real SBScanner::getKAngle(string endpoint1, string middleAtom, string endpoint2)
 Real SBScanner::getEqAngle(string endpoint1, string middleAtom, string endpoint2) {
 	if(angleDataMap.count(endpoint1) == 0) return -1;
 	if(angleDataMap[endpoint1].count(middleAtom) == 0) return -1;
-	if(angleDataMap[endpoint1][middleAtom].count(endpoint2) == 0) return 0;
+	if(angleDataMap[endpoint1][middleAtom].count(endpoint2) == 0) return 0;  //Is this a typo?
 	return angleDataMap[endpoint1][middleAtom][endpoint2].eqAngle;
 }

@@ -233,10 +233,10 @@ class SimBox {
   Real* dihedralSizes;
 
   /**
-   * Real[?][numDihedrals]
+   * Real[DIHEDRAL_DATA_SIZE][numDihedrals]
    * Will hold data about every dihedral in the box. Currently unimplemented.
    */
-  const Real** dihedralData;
+  Real** dihedralData;
 
   // ----- NLC information -----
 

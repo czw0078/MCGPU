@@ -13,6 +13,7 @@
 // Holds the number of spatial dimenions in the simulation.
 #define NUM_DIMENSIONS 3
 
+
 // MOLECULE DATA CONSTANTS
 
 // Indicates the row of moleculeData that holds the start index of each
@@ -34,7 +35,6 @@
 // Indicates the row of moleculeData that hold the type of each molecule.
 #define MOL_TYPE 4
 
-
 // Indicates the row of moleculeData that holds the start index of each
 //     molecule's bonds in bondData and bondLengths.
 #define MOL_BOND_START 5
@@ -48,11 +48,20 @@
 #define MOL_ANGLE_START 7
 
 // Indicates the row of moleculeData that holds the number of angles in each
-//     molecules.
+//     molecule.
 #define MOL_ANGLE_COUNT 8
 
+// Indicates the row of moleculeData that holds the start index of each
+//     molecule's dihedrals in dihedralData and dihedralSizes //TODO: is this correct?
+#define MOL_DIHEDRAL_START 9
+
+// Indicates the row of moleculeData that holds the number of dihedrals in each
+//     molecule
+#define MOL_DIHEDRAL_COUNT 10
+
 // Indicates the number of rows of moleculeData.
-#define MOL_DATA_SIZE 9
+#define MOL_DATA_SIZE 11
+
 
 // ATOM DATA CONSTANTS
 
@@ -88,6 +97,7 @@
 // Indicates the number of rows in bondData.
 #define BOND_DATA_SIZE 5
 
+
 // ANGLE DATA CONSTANTS
 
 // Indicates the row of angleData that holds the first atom's index for each
@@ -113,5 +123,49 @@
 
 // Indicates the number of rows in angleData.
 #define ANGLE_DATA_SIZE 6
+
+
+// DIHEDRAL DATA CONSTANTS
+
+// Indicates the row of dihedralData that holds the first atom's index for
+//     each angle
+#define DIHEDRAL_A1_IDX 0
+
+// Indicates the row of dihedralData that holds the second atom's index for
+//     each angle
+#define DIHEDRAL_A2_IDX 1
+
+// Indicates the row of dihedralData that holds the second atom's index for
+//     each angle
+#define DIHEDRAL_A3_IDX 2
+
+// Indicates the row of dihedralData that holds the second atom's index for
+//     each angle
+#define DIHEDRAL_A4_IDX 3
+
+// Indicates the row of dihedralData that holds the dihedral's first
+//     Fourier coefficient
+#define DIHEDRAL_V1_IDX 4
+
+// Indicates the row of dihedralData that holds the dihedral's second
+//     Fourier coefficient
+#define DIHEDRAL_V2_IDX 5
+
+// Indicates the row of dihedralData that holds the dihedral's third
+//     Fourier coefficient
+#define DIHEDRAL_V3_IDX 6
+
+// Indicates the row of dihedralData that holds the dihedral's fourth
+//     Fourier coefficient
+#define DIHEDRAL_V4_IDX 7
+
+// Indicates the row of dihedralData holding each dihedral's equilibrium measure
+#define DIHEDRAL_EQVALUE 8
+
+// Indicates the row of dihedral holding whether each dihedral is variable.
+#define DIHEDRAL_VARIABLE 9
+
+// Indicates the number of rows in dihedralData
+#define DIHEDRAL_DATA_SIZE 10
 
 #endif

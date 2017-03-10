@@ -185,6 +185,18 @@ void Simulation::run() {
     baseStateFile.append("untitled");
   }
 
+  /* DEBUG: These lines demo the twistBond function
+  writePDB(box->getEnvironment(), box->getMolecules(), sb, "initialState");
+  SimCalcs::twistBond(0,3,45);
+  char pdbFileName[100];
+  for (int i = 0; i < 15; i++) {
+    sprintf(pdbFileName, "rotated%d", i);
+    SimCalcs::twistBond(0,i,30);
+    writePDB(box->getEnvironment(), box->getMolecules(), sb, std::string(pdbFileName));
+  }
+  */
+
+  /* DEBUG: do not perform main simloop
   // ----- Main simulation loop -----
   for (int move = stepStart; move < (stepStart + simSteps); move++) {
     new_lj = 0, old_lj = 0, new_charge = 0, old_charge = 0;
@@ -230,9 +242,11 @@ void Simulation::run() {
     }
     sb->stepNum++;
   }
+  */
+
   delete(simStep);
   endTime = clock();
-  writePDB(box->getEnvironment(), box->getMolecules(), sb);
+  writePDB(box->getEnvironment(), box->getMolecules(), sb, getPDBName());
 
   double diffTime = difftime(endTime, startTime) / CLOCKS_PER_SEC;
 
@@ -327,7 +341,7 @@ void Simulation::saveState(const std::string& baseFileName, int simStep, const S
                         sb->atomCoordinates, sb->numAtoms);
 }
 
-int Simulation::writePDB(Environment sourceEnvironment, Molecule* sourceMoleculeCollection, SimBox* sb) {
+std::string Simulation::getPDBName() {
   std::string pdbName;
 
   if (!args.pdbOutputPath.empty()) {
@@ -339,7 +353,10 @@ int Simulation::writePDB(Environment sourceEnvironment, Molecule* sourceMolecule
   } else {
     pdbName.append(RESULTS_FILE_DEFAULT);
   }
+  return pdbName;
+}
 
+int Simulation::writePDB(Environment sourceEnvironment, Molecule* sourceMoleculeCollection, SimBox* sb, std::string pdbName) {
   pdbName.append(".pdb");
   std::ofstream pdbFile;
   pdbFile.open(pdbName.c_str());

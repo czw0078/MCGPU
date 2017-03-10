@@ -45,6 +45,7 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
   int largestMolecule = 0, nAtoms = 0;
   int mostBonds = 0, nBonds = 0;
   int mostAngles = 0, nAngles = 0;
+  int mostDihedrals = 0, nDihedrals = 0;
 
   sb->excludeAtoms = new int**[numTypes];
   sb->fudgeAtoms =  new int**[numTypes];
@@ -58,6 +59,7 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
     nAtoms += molecules[i].numOfAtoms;
     nBonds += molecules[i].numOfBonds;
     nAngles += molecules[i].numOfAngles;
+    nDihedrals += molecules[i].numOfDihedrals;
     if (molecules[i].numOfAtoms > largestMolecule) {
       largestMolecule = molecules[i].numOfAtoms;
     }
@@ -67,11 +69,15 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
     if (molecules[i].numOfAngles > mostAngles) {
       mostAngles = molecules[i].numOfAngles;
     }
+    if (molecules[i].numOfDihedrals > mostDihedrals) {
+      mostDihedrals = molecules[i].numOfDihedrals;
+    }
   }
 
   sb->numAtoms = nAtoms;
   sb->numBonds = nBonds;
   sb->numAngles = nAngles;
+  sb->numDihedrals = nDihedrals;
 
   sb->rollBackCoordinates = new Real[NUM_DIMENSIONS * nAtoms];
   sb->atomCoordinates = new Real[NUM_DIMENSIONS * nAtoms];
@@ -79,6 +85,7 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
   sb->moleculeData = new int[MOL_DATA_SIZE * sb->numMolecules];
   sb->bondData = new Real*[BOND_DATA_SIZE];
   sb->angleData = new Real*[ANGLE_DATA_SIZE];
+  sb->dihedralData = new Real*[DIHEDRAL_DATA_SIZE];
   sb->bondLengths = new Real[nBonds];
   sb->rollBackBondLengths = new Real[nBonds];
   sb->unionFindParent = new int[largestMolecule];
@@ -93,7 +100,12 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
   for (int i = 0; i < ANGLE_DATA_SIZE; i++) {
     sb->angleData[i] = new Real[sb->numAngles];
   }
-  int atomIdx = 0, bondIdx = 0, angleIdx = 0;
+
+  for (int i = 0; i < DIHEDRAL_DATA_SIZE; i++) {
+    sb->dihedralData[i] = new Real[sb->numDihedrals];
+  }
+
+  int atomIdx = 0, bondIdx = 0, angleIdx = 0, dihedralIdx = 0;
 
   std::map<int, int> idToIdx;
   std::map<int, std::string*> idToName;
@@ -171,6 +183,25 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
       sb->angleData[ANGLE_VARIABLE][angleIdx] = a.variable;
       sb->hasFlexibleAngles |= a.variable;
       angleIdx++;
+    }
+
+    // Store all the dihedral data for the molecule
+    for (int j = 0; j < molecules[i].numOfDihedrals; j++) {
+      Dihedral d = molecules[i].dihedrals[j];
+      sb->dihedralData[DIHEDRAL_A1_IDX][dihedralIdx] = idToIdx[d.atom1];
+      sb->dihedralData[DIHEDRAL_A2_IDX][dihedralIdx] = idToIdx[d.atom2];
+      sb->dihedralData[DIHEDRAL_A3_IDX][dihedralIdx] = idToIdx[d.atom3];
+      sb->dihedralData[DIHEDRAL_A4_IDX][dihedralIdx] = idToIdx[d.atom4];
+
+      // DEBUG: Print dihedralData contents
+      printf("Populating dihedralData: %d.%d\n",i, j);
+      printf("  Atoms: %d %d %d %d\n",
+        (int)sb->dihedralData[DIHEDRAL_A1_IDX][dihedralIdx],
+        (int)sb->dihedralData[DIHEDRAL_A2_IDX][dihedralIdx],
+        (int)sb->dihedralData[DIHEDRAL_A3_IDX][dihedralIdx],
+        (int)sb->dihedralData[DIHEDRAL_A4_IDX][dihedralIdx]);
+
+      dihedralIdx++;
     }
 
     int type = molecules[i].type;

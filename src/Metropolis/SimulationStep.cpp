@@ -367,9 +367,9 @@ void SimCalcs::twistBond(int molIdx, int bondIdx, Real twistDeg) {
     Real dot = 0.0;
     Real cross[NUM_DIMENSIONS];
     if (find(i - startIdx) == group1) {
-      theta = twistDeg * -DEG2RAD;
+      theta = twistDeg * -DEG2RAD/2;
     } else if (find(i - startIdx) == group2) {
-      theta = twistDeg * DEG2RAD;
+      theta = twistDeg * DEG2RAD/2;
     } else {
       continue;
     }
