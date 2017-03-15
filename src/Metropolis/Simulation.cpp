@@ -185,16 +185,15 @@ void Simulation::run() {
     baseStateFile.append("untitled");
   }
 
-  /* DEBUG: These lines demo the twistBond function
   writePDB(box->getEnvironment(), box->getMolecules(), sb, "initialState");
   SimCalcs::twistBond(0,3,45);
-  char pdbFileName[100];
-  for (int i = 0; i < 15; i++) {
+//  char pdbFileName[100];
+/*  for (int i = 0; i < 15; i++) {
     sprintf(pdbFileName, "rotated%d", i);
     SimCalcs::twistBond(0,i,30);
     writePDB(box->getEnvironment(), box->getMolecules(), sb, std::string(pdbFileName));
   }
-  */
+*/  
 
   /* DEBUG: do not perform main simloop
   // ----- Main simulation loop -----
