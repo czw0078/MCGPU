@@ -1,88 +1,63 @@
-/*
- * A subclass of SimulationStep that uses a verlet list strategy
+/**
+ * VerletStep.h
+ *
+ * A subclass of SimulationStep that uses a "verlet list" for energy
+ * calculations
+ *
  */
 
-#ifndef VERLETSTEP_H
-#define VERLETSTEP_H
+#ifndef METROPOLIS_VERLETSTEP_H
+#define METROPOLIS_VERLETSTEP_H
 
-#include "Metropolis/SimulationStep.h"
-#include "Metropolis/GPUCopy.h"
+#include "SimulationStep.h"
 
-class VerletStep : public SimulationStep {
+class VerletStep: public SimulationStep {
+    public:
+        explicit VerletStep(SimBox* box): SimulationStep(box),
+                                    vl(NULL),
+                                    vaCoords(NULL) {}
+
+
+        virtual ~VerletStep();
+        virtual Real calcSystemEnergy(Real &subLJ, Real &subCharge, int numMolecules);
+        virtual Real calcMolecularEnergyContribution(int currMol, int startMol);
+        virtual void changeMolecule(int molIdx, SimBox *box);
+        virtual void rollback(int molIdx, SimBox *box);
 
     private:
-    Box* box; // Remove with transition to SimBox
-    SimBox* sb;
-    void copyMoleculeVerlet(Molecule* molecules, int molIndex);
-    void freeVerletMolecules();
-    Molecule* verletMolecules; // Remove with transition to SimBox
-    int** verletList;
-    int* amtOfVerletNeighbors;
-
-    // A change to this will need a corresponding change in SimBoxBuilder.cpp
-    const Real SKIN_MULTIPLIER = 1.28175;
-
-    public:    
-    VerletStep(SimBox* sb) : SimulationStep(sb), box(sb->verletListBox) {
-        createVerletList(sb->numMolecules, sb->verletCutoff, false);
-    }
-    ~VerletStep();
-    Real calcMolecularEnergyContribution(int currMol, int startMol);
-
-    /*
-     * Creates a new verlet list for each molecule in box and saves the position when the verlet list is made
-     * @param isInitialized Indicates if the verlet list has been allocated previously 
-     */
-    void createVerletList(int numMolecules, Real verletCutoff, bool isInitialized);
-
-    /**
-     * TO BE REPLACED WITH SIMCALCS IMPLEMENTATION
-     * Calculates the intermolecular energy between two molecules
-     */
-	Real calcInterMolecularEnergy(Molecule *molecules, int mol1, int mol2, Environment *environment);
-	
-    /**
-     * Uses the molecule list and verletMoleculest to determine if the randomly to determine if the randomly selected 
-     * molecule's displacement is greater than the skin layer of the verlet algorithm. Distance chacking is between the current 
-     * position of the molecile and the position of the molecule whent he verlet list was created.
-     */
-    bool isOutsideSkinLayer(int moleculeIndex);
-	
-   /**
-    * Used when calculating molecular energy contribution. We need to use the verlet list and 
-    * only calculate the energy contribution of molecules within the rrcutoff range
-    */
-   bool isWithinRRCutoff(int molecule1, int molecule2);
-	
-    /**
-     * TO BE REPLACED WITH SIMCALCS IMPLEMENTATION
-     * Calculates the LJ energy between two atoms
-     */
-	Real calc_lj(Atom atom1, Atom atom2, Real r2);
-	
-    /**
-     * TO BE REPLACED WITH SIMCALCS IMPLEMENTATION
-     * Calculates the charge energy between two atoms
-     */
-	Real calcCharge(Real charge1, Real charge2, Real r);
-	
-    /**
-     * TO BE REPLACED WITH SIMCALCS IMPLEMENTATION
-     * Makes a distance periodic within a specified range
-     */
-	Real makePeriodic(Real x, Real boxDim);
-
-    /**
-     * TO BE REPLACED WITH SIMCALCS IMPLEMENTATION
-     * Calculates the geometric mean of two values
-     */
-	Real calcBlending(Real d1, Real d2);
-	
-    /**
-     * TO BE REPLACED WITH SIMCALCS IMPLEMENTATION
-     * Calculates the squared diestance between two atoms
-     */
-	Real calcAtomDist(Atom atom1, Atom atom2, Environment *enviro);
+        int* vl;
+        Real* vaCoords;
+        void createVerlet();
 };
-#endif
 
+namespace VerletCalcs {
+        
+    /**
+     *
+     */
+     Real calcMolecularEnergyContribution(int currMol, int startMol, int* verletList);
+    
+     /**
+      *
+      */
+    Real calcMoleculeInteractionEnergy (int m1, int m2, int* molData,
+                                      Real* aData, Real* aCoords,
+                                      Real* bSize, int numMols, int numAtoms);
+    
+    /**
+     *
+     */
+    bool updateVerlet(Real* verletList, int i);
+    
+    /**
+     *
+     */
+    void freeMemory(int* verletList, Real* verletAtomCoords);
+
+    /**
+     *
+     */
+    int* newVerletList();
+}
+
+#endif

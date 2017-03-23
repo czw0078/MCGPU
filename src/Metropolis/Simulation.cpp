@@ -181,7 +181,7 @@ void Simulation::run() {
   log.verbose(durationConv.str());
 
   std::stringstream simStepsConv;
-  simStepsConv << "\nRunning " << (simSteps) << " steps\n";
+  simStepsConv << "Running " << (simSteps) << " steps\n";
   log.verbose(simStepsConv.str());
 
   std::string baseStateFile = "";

@@ -4,7 +4,6 @@
 SimBoxBuilder::SimBoxBuilder(SimulationArgs* args, SBScanner* sbData_in) {
   sb = new SimBox();
   sb->useNLC = args->useNeighborList;
-  sb->useVerlet = args->useVerletList;
   sbData = sbData_in;
 }
 
@@ -17,12 +16,6 @@ SimBox* SimBoxBuilder::build(Box* box) {
 
   if (sb->useNLC) 
     fillNLC();
-  else if(sb->useVerlet){ 
-    sb->verletListBox = box;
-    // Verlet cutoff is 28.175% larger than radius cutoff
-    // See resource note at top of VerletStep.cpp
-    sb->verletCutoff = 1.28175 * pow(box->getEnvironment()->cutoff, 2);
-  }
   return sb;
 }
 

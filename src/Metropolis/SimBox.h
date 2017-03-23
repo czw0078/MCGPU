@@ -246,11 +246,6 @@ class SimBox {
   bool useNLC;
 
   /**
-   * True if verlet list is being used, false otherwise
-   */
-  bool useVerlet;
-
-  /**
    * int[3]
    * Holds the number of cells in each dimension.
    */
@@ -285,16 +280,6 @@ class SimBox {
    * examined if that node is the head of its linked list.
    */
   NLC_Node* prevNode;
-
-  /*
-   * TEMPORARY 
-   */
-  Box* verletListBox;
-
-  /**
-   * The cutuff value to use in the verlet list
-   */
-  Real verletCutoff;
 
   /**
    * int[3]
