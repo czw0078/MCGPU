@@ -10,13 +10,17 @@
 #define METROPOLIS_VERLETSTEP_H
 
 #include "SimulationStep.h"
+#include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
 
 class VerletStep: public SimulationStep {
     public:
         explicit VerletStep(SimBox* box): SimulationStep(box),
-                                    vl(NULL),
+                                    h_verletList(0),
                                     vaCoords(NULL) {}
-
+//                                    h_verletAtomCoords(0),
+//                                    d_verletList(0),
+//                                    d_verletAtomCoords(0) {}
 
         virtual ~VerletStep();
         virtual Real calcSystemEnergy(Real &subLJ, Real &subCharge, int numMolecules);
@@ -25,8 +29,11 @@ class VerletStep: public SimulationStep {
         virtual void rollback(int molIdx, SimBox *box);
 
     private:
-        int* vl;
+        thrust::host_vector<int> h_verletList;
         Real* vaCoords;
+//        thrust::host_vector<int> h_verletAtomCoords;
+//        thrust::device_vector<int> d_verletList;
+//        thrust::device_vector<int> d_verletAtomCoords;
         void createVerlet();
 };
 
@@ -35,7 +42,7 @@ namespace VerletCalcs {
     /**
      *
      */
-     Real calcMolecularEnergyContribution(int currMol, int startMol, int* verletList);
+     Real calcMolecularEnergyContribution(int currMol, int startMol, thrust::host_vector<int> verletList);
     
      /**
       *
@@ -47,17 +54,17 @@ namespace VerletCalcs {
     /**
      *
      */
-    bool updateVerlet(Real* verletList, int i);
+    bool updateVerlet(Real* vaCoords, int i);
     
     /**
      *
      */
-    void freeMemory(int* verletList, Real* verletAtomCoords);
+    void freeMemory(thrust::host_vector<int> &h_verletList, Real* verletAtomCoords);
 
     /**
      *
      */
-    int* newVerletList();
+    thrust::host_vector<int> newVerletList();
 }
 
 #endif

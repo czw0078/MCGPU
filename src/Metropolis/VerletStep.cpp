@@ -4,7 +4,7 @@
 #include "GPUCopy.h"
 
 Real VerletStep::calcMolecularEnergyContribution(int currMol, int startMol) {
-    return VerletCalcs::calcMolecularEnergyContribution(currMol, startMol, this->vl);
+    return VerletCalcs::calcMolecularEnergyContribution(currMol, startMol, this->h_verletList);
 }
 
 Real VerletStep::calcSystemEnergy(Real &subLJ, Real &subCharge, int numMolecules) {
@@ -17,18 +17,15 @@ void VerletStep::createVerlet(){
 
     SimBox* sb = GPUCopy::simBoxCPU();
     Real *atomCoords = sb->atomCoordinates;
-    const long numMolecules = sb->numMolecules;
     const int numAtoms = sb->numAtoms;
 
-    VerletCalcs::freeMemory(this->vl, this->vaCoords);
+    VerletCalcs::freeMemory(this->h_verletList, this->vaCoords);
 
-    vl = new int[numMolecules * numMolecules];
+    this->h_verletList = VerletCalcs::newVerletList();
 
     vaCoords = new Real[NUM_DIMENSIONS * numAtoms];
     for(int i = 0; i < NUM_DIMENSIONS * numAtoms; i++)
         vaCoords[i] = atomCoords[i];
-
-    vl = VerletCalcs::newVerletList();
 } // createVerlet
 
 void VerletStep::changeMolecule(int molIdx, SimBox *box) {
@@ -44,15 +41,14 @@ void VerletStep::rollback(int molIdx, SimBox *box) {
 }
 
 VerletStep::~VerletStep() {
-  VerletCalcs::freeMemory(this->vl, this->vaCoords);
-  this->vl = NULL;
+  VerletCalcs::freeMemory(this->h_verletList, this->vaCoords);
   this->vaCoords = NULL;
 }
 
 
 // ----- VerletCalcs Definitions -----
 
-Real VerletCalcs::calcMolecularEnergyContribution(int currMol, int startMol, int* verletList){
+Real VerletCalcs::calcMolecularEnergyContribution(int currMol, int startMol, thrust::host_vector<int> verletList){
     Real total = 0.0;
 
     SimBox* sb = GPUCopy::simBoxCPU();
@@ -68,7 +64,7 @@ Real VerletCalcs::calcMolecularEnergyContribution(int currMol, int startMol, int
     const int p1Start = molData[MOL_PIDX_START * numMolecules + currMol];
     const int p1End = molData[MOL_PIDX_COUNT * numMolecules + currMol] + p1Start;
 
-    if (verletList == NULL) {
+    if (verletList.empty()) {
         for (int otherMol = startMol; otherMol < numMolecules; otherMol++) {
             if (otherMol != currMol) {
                 int p2Start = molData[MOL_PIDX_START * numMolecules + otherMol];
@@ -148,7 +144,7 @@ bool VerletCalcs::updateVerlet(Real* vaCoords, int i) {
     return false;
 } // updateVerlet()
 
-int* VerletCalcs::newVerletList(){
+thrust::host_vector<int> VerletCalcs::newVerletList(){
     SimBox* sb = GPUCopy::simBoxCPU();
     int *molData = sb->moleculeData;
     Real *atomCoords = sb->atomCoordinates;
@@ -160,7 +156,7 @@ int* VerletCalcs::newVerletList(){
     int p1Start, p1End;
     int p2Start, p2End;
 
-    int* verletList = new int[numMolecules * numMolecules];
+    thrust::host_vector<int> verletList(numMolecules * numMolecules, -1);
 
     int numNeighbors;
     for(int i = 0; i < numMolecules; i++){
@@ -188,9 +184,9 @@ int* VerletCalcs::newVerletList(){
     return verletList;
 } // newVerletList()
 
-void VerletCalcs::freeMemory(int* verletList, Real* verletAtomCoords) {
-    if( verletList != NULL )
-        delete[] verletList;
+void VerletCalcs::freeMemory(thrust::host_vector<int> &verletList, Real* verletAtomCoords) {
+    verletList.clear();
+    verletList.shrink_to_fit();
     if( verletAtomCoords != NULL )
         delete[] verletAtomCoords;
 }
