@@ -159,13 +159,17 @@
 //     Fourier coefficient
 #define DIHEDRAL_V4_IDX 7
 
-// Indicates the row of dihedralData holding each dihedral's equilibrium measure
-#define DIHEDRAL_EQVALUE 8
+// Indicates the row of dihedralData holding each dihedral's initial measure
+#define DIHEDRAL_INIT_VALUE 8
+
+// Indicates the row of dihedralData holding the maximumum total amount that
+//     each dihedral can be twisted during pertubation
+#define DIHEDRAL_MAX_CHANGE 9
 
 // Indicates the row of dihedral holding whether each dihedral is variable.
-#define DIHEDRAL_VARIABLE 9
+#define DIHEDRAL_VARIABLE 10
 
 // Indicates the number of rows in dihedralData
-#define DIHEDRAL_DATA_SIZE 10
+#define DIHEDRAL_DATA_SIZE 11
 
 #endif

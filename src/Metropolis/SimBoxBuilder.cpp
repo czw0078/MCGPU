@@ -118,6 +118,8 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
     sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + i] = molecules[i].numOfBonds;
     sb->moleculeData[MOL_ANGLE_START * sb->numMolecules + i] = angleIdx;
     sb->moleculeData[MOL_ANGLE_COUNT * sb->numMolecules + i] = molecules[i].numOfAngles;
+    sb->moleculeData[MOL_DIHEDRAL_START * sb->numMolecules + i] = dihedralIdx;
+    sb->moleculeData[MOL_DIHEDRAL_COUNT * sb->numMolecules + i] = molecules[i].numOfDihedrals;
 
     // Store all the atom data for the molecule
     for (int j = 0; j < molecules[i].numOfAtoms; j++) {
@@ -193,14 +195,14 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
       sb->dihedralData[DIHEDRAL_A3_IDX][dihedralIdx] = idToIdx[d.atom3];
       sb->dihedralData[DIHEDRAL_A4_IDX][dihedralIdx] = idToIdx[d.atom4];
 
-      // DEBUG: Print dihedralData contents
-      printf("Populating dihedralData: %d.%d\n",i, j);
-      printf("  Atoms: %d %d %d %d\n",
-        (int)sb->dihedralData[DIHEDRAL_A1_IDX][dihedralIdx],
-        (int)sb->dihedralData[DIHEDRAL_A2_IDX][dihedralIdx],
-        (int)sb->dihedralData[DIHEDRAL_A3_IDX][dihedralIdx],
-        (int)sb->dihedralData[DIHEDRAL_A4_IDX][dihedralIdx]);
-
+      //TODO 2: store fourier data, variability, and max angle
+      sb->dihedralData[DIHEDRAL_V1_IDX][dihedralIdx] = d.V1;
+      sb->dihedralData[DIHEDRAL_V2_IDX][dihedralIdx] = d.V2;
+      sb->dihedralData[DIHEDRAL_V3_IDX][dihedralIdx] = d.V3;
+      sb->dihedralData[DIHEDRAL_V4_IDX][dihedralIdx] = d.V4;
+      sb->dihedralData[DIHEDRAL_INIT_VALUE][dihedralIdx] = d.value;
+      sb->dihedralData[DIHEDRAL_MAX_CHANGE][dihedralIdx] = d.maxAngleChange;
+      sb->dihedralData[DIHEDRAL_VARIABLE][dihedralIdx] = d.variable;
       dihedralIdx++;
     }
 

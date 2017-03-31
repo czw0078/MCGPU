@@ -39,14 +39,10 @@ bool ZmatrixScanner::readInZmatrix(string filename, OplsScanner* scanner) {
   }
 
   string line;
-	int moleculeNum = -1;
 
   while (zmatrixScanner.good()) {
     numOfLines++;
     getline(zmatrixScanner, line);
-
-    Molecule workingMolecule;
-	  workingMolecule.type = moleculeNum;
 
     try {
       if (line.at(0) != '#' && numOfLines > 1) {
@@ -55,52 +51,11 @@ bool ZmatrixScanner::readInZmatrix(string filename, OplsScanner* scanner) {
     } catch (std::out_of_range& e) {}
 
     if (startNewMolecule) {
-      Atom* atomArray;
-      Bond* bondArray;
-      Angle* angleArray;
-      Dihedral* dihedralArray;
-      moleculeNum++;
-      workingMolecule.type = moleculeNum;
-
-      if (hasAdditionalBondAngles) {
-        addImpliedAngles(angleVector, bondVector);
-      }
-
-	    double atomVectorSize = atomVector.size();
-      atomArray = (Atom*) malloc(sizeof(Atom) * atomVector.size());
-      bondArray = (Bond*) malloc(sizeof(Bond) * bondVector.size());
-      angleArray = (Angle*) malloc(sizeof(Angle) * angleVector.size());
-      dihedralArray = (Dihedral*) malloc(sizeof(Dihedral) * dihedralVector.size());
-
-      for (int i = 0; i < atomVector.size(); i++) {
-        atomArray[i] = atomVector[i];
-      }
-
-      for (int i = 0; i < bondVector.size(); i++) {
-        bondArray[i] = bondVector[i];
-      }
-
-      for (int i = 0; i < angleVector.size(); i++) {
-        angleArray[i] = angleVector[i];
-      }
-
-      for (int i = 0; i < dihedralVector.size(); i++) {
-        dihedralArray[i] = dihedralVector[i];
-      }
-
-      moleculePattern.push_back(createMolecule(-1, moleculeNum, atomArray, angleArray, bondArray, dihedralArray,
-      atomVector.size(), angleVector.size(), bondVector.size(), dihedralVector.size()));
-
-      atomVector.clear();
-      bondVector.clear();
-      angleVector.clear();
-      dihedralVector.clear();
-
-      startNewMolecule = false;
-      hasAdditionalBondAngles = false;
+      // TODO handle case when more than one molecule is specified in z-matrix
     }
   }
 
+  finalizeMolecules();
 
   zmatrixScanner.close();
 
@@ -164,17 +119,8 @@ void ZmatrixScanner::parseLine(string line, int numOfLines) {
       lineDihedral.atom3 = atoi(bondWith.c_str());
       lineDihedral.atom4 = atoi(angleWith.c_str());
       lineDihedral.value = atof(dihedralMeasure.c_str());
-
-      printf("new atom: %d %d %d %d\n",
-        lineDihedral.atom1,
-        lineDihedral.atom2,
-        lineDihedral.atom3,
-        lineDihedral.atom4);
-
       lineDihedral.variable = false;
-      // TODO 1
-      // use oplsScanner->getFourier to get Fourier Constants, and insert into lineDihedral
-      // lineDihedral.fourierInfo = oplsScnner->getFourier(???)
+      // We do not set Fourier coefficients here because we do not yet have enough data
       dihedralVector.push_back(lineDihedral);
     }
 
@@ -186,17 +132,18 @@ void ZmatrixScanner::parseLine(string line, int numOfLines) {
 
   if (previousFormat >= 3 && format == -1) {
     handleZAdditions(line, previousFormat);
+  } else {
+    previousFormat = format;
   }
 
-  previousFormat = format;
 }
 
 int ZmatrixScanner::checkFormat(string line) {
   int format = -1;
   stringstream iss(line);
   stringstream iss2(line);
-  string atomType, someLine;
-  int atomID, oplsA, oplsB, bondWith, angleWith,dihedralWith,extra;
+  string atomType, someLine, extra;
+  int atomID, oplsA, oplsB, bondWith, angleWith,dihedralWith;
   Real bondDistance, angleMeasure, dihedralMeasure;
 
     // check if it is the normal 11 line format
@@ -236,64 +183,32 @@ int ZmatrixScanner::checkFormat(string line) {
 }
 
 void ZmatrixScanner::handleZAdditions(string line, int cmdFormat) {
-  vector<int> atomIds;
-  int id;
-  stringstream tss(line.substr(0,15) );
-
   if (line.find("AUTO") != string::npos) {
 	     //Do stuff for AUTO
 	     //but what is AUTO-related stuff?
   } else {
-
-    while(tss >> id) {
-      atomIds.push_back(id);
-      if(tss.peek()=='-'||tss.peek()==','||tss.peek()==' ') {
-        tss.ignore();
-      }
-    }
-
-    int start, end=0;
-
-    if (atomIds.size() == 1) {
-      start = atomIds[0];
-      end = atomIds[0];
-    } else if (atomIds.size() == 2) {
-      start = atomIds[0]; end = atomIds[1];
-    }
-
     switch(cmdFormat) {
       case 3:     // Geometry Variations follow
         break;
-      case 4:      // Variable Bonds follow
-        for (int i = 0; i < moleculePattern[0].numOfBonds; i++) {
-          if (moleculePattern[0].bonds[i].atom1 >= start &&  moleculePattern[0].bonds[i].atom1 <= end) {
-            moleculePattern[0].bonds[i].variable = true;
-          }
-        }
+      case 4:     // Variable Bonds follow
+        handleVariableBond(line);
         break;
       case 5:     //  Additional Bonds follow
+        handleAdditionalBond(line);
         break;
       case 6:     // Harmonic Constraints follow
         break;
       case 7:     //  Variable Bond Angles follow
-        for (int i = 0; i < moleculePattern[0].numOfAngles; i++) {
-          if (moleculePattern[0].angles[i].atom1 >= start && moleculePattern[0].angles[i].atom1 <= end) {
-            moleculePattern[0].angles[i].variable = true;
-          }
-        }
+        handleVariableAngle(line);
         break;
       case 8:     // Additional Bond Angles follow
-        // More angles are in the molecule, will be calculated later
-        hasAdditionalBondAngles = true;
+        handleAdditionalAngle(line);
         break;
       case 9:     // Variable Dihedrals follow
-        for(int i=0; i< moleculePattern[0].numOfDihedrals; i++) {
-          if (moleculePattern[0].dihedrals[i].atom1 >= start &&  moleculePattern[0].dihedrals[i].atom1 <= end) {
-            moleculePattern[0].dihedrals[i].variable = true;
-          }
-        }
+        handleVariableDihedral(line);
         break;
-      case 10:    //  Domain Definitions follow
+      case 10:    //  Additional Dihedrals follow
+        handleAdditionalDihedral(line);
         break;
     }
   }
@@ -585,4 +500,170 @@ void ZmatrixScanner::addImpliedAngles(vector<Angle>& angleVector,
   for (int i = 0; i < toAdd.size(); i++) {
     angleVector.push_back(toAdd[i]);
   }
+}
+
+void ZmatrixScanner::finalizeMolecules() {
+  Atom* atomArray;
+  Bond* bondArray;
+  Angle* angleArray;
+  Dihedral* dihedralArray;
+  int moleculeNum = 0;
+
+  // FIXME: should this be called here, or in handleZAdditions()?
+  if (hasAdditionalBondAngles) {
+    addImpliedAngles(angleVector, bondVector);
+  }
+
+  double atomVectorSize = atomVector.size();
+  atomArray = (Atom*) malloc(sizeof(Atom) * atomVector.size());
+  bondArray = (Bond*) malloc(sizeof(Bond) * bondVector.size());
+  angleArray = (Angle*) malloc(sizeof(Angle) * angleVector.size());
+  dihedralArray = (Dihedral*) malloc(sizeof(Dihedral) * dihedralVector.size());
+
+  for (int i = 0; i < atomVector.size(); i++) {
+    atomArray[i] = atomVector[i];
+  }
+
+  for (int i = 0; i < bondVector.size(); i++) {
+    bondArray[i] = bondVector[i];
+  }
+
+  for (int i = 0; i < angleVector.size(); i++) {
+    angleArray[i] = angleVector[i];
+  }
+
+  for (int i = 0; i < dihedralVector.size(); i++) {
+    dihedralArray[i] = dihedralVector[i];
+  }
+
+  moleculePattern.push_back(createMolecule(-1, moleculeNum, atomArray, angleArray, bondArray, dihedralArray,
+  atomVector.size(), angleVector.size(), bondVector.size(), dihedralVector.size()));
+
+  atomVector.clear();
+  bondVector.clear();
+  angleVector.clear();
+  dihedralVector.clear();
+
+  startNewMolecule = false;
+  hasAdditionalBondAngles = false;
+}
+
+void ZmatrixScanner::handleVariableBond(string line) {
+  vector<string> tokens = tokenizeAdditionalLine(line);
+  if (tokens.size() == 1) {
+    int atom1 = atoi(tokens[0].c_str());
+    for (int i = 0; i < bondVector.size(); i++) {
+      if (bondVector[i].atom1 == atom1) {
+        bondVector[i].variable = true;
+      }
+    }
+  } else {
+    // TODO Handle cases where more than one bond is specified on a line
+  }
+}
+
+void ZmatrixScanner::handleAdditionalBond(string line) {
+  // TODO implement this. Will need an example of a z-matrix with a ring for testing
+}
+
+void ZmatrixScanner::handleVariableAngle(string line) {
+  vector<string> tokens = tokenizeAdditionalLine(line);
+  if (tokens.size() == 1) {
+    int atom1 = atoi(tokens[0].c_str());
+    for (int i = 0; i < angleVector.size(); i++) {
+      if (angleVector[i].atom1 == atom1) {
+        angleVector[i].variable = true;
+      }
+    }
+  } else {
+    // TODO Handle cases where more than one angle is specified on a line
+  }
+}
+
+void ZmatrixScanner::handleAdditionalAngle(string line) {
+  vector<string> tokens = tokenizeAdditionalLine(line);
+  if (tokens.size() == 3) {
+    int atom1 = atoi(tokens[0].c_str());
+    int mid = atoi(tokens[1].c_str());
+    int atom2 = atoi(tokens[2].c_str());
+    angleVector.push_back(Angle(atom1, atom2, 0, false));
+  }
+}
+
+void ZmatrixScanner::handleVariableDihedral(string line) {
+  vector<string> tokens = tokenizeAdditionalLine(line);
+  if (tokens.size() == 4) {
+    int atom1 = atoi(tokens[0].c_str());
+    int initialType = atoi(tokens[1].c_str());
+    // int finalType = atoi(tokens[2].c_str());
+    Real maxAngleChange = atof(tokens[3].c_str());
+
+    char hashNumString[10];
+    sprintf(hashNumString, "%03d", initialType);
+    Fourier fourierData = {0,0,0,0};
+    if (initialType != 0) {
+     fourierData = oplsScanner->getFourier(string(hashNumString));
+    }
+    //TODO what to do if fourierData is not found in opls.par?
+
+    for (int i = 0; i < dihedralVector.size(); i++) {
+      if (dihedralVector[i].atom1 == atom1) {
+        dihedralVector[i].V1 = fourierData.vValues[0];
+        dihedralVector[i].V2 = fourierData.vValues[1];
+        dihedralVector[i].V3 = fourierData.vValues[2];
+        dihedralVector[i].V4 = fourierData.vValues[3];
+        dihedralVector[i].maxAngleChange = maxAngleChange;
+        dihedralVector[i].variable = true;
+      }
+    }
+  } else {
+    // FIXME: What do we do if the line doesn't have format %d %d %d %f?
+  }
+
+}
+
+void ZmatrixScanner::handleAdditionalDihedral(string line) {
+  vector<string> tokens = tokenizeAdditionalLine(line);
+  if (tokens.size() == 6) {
+    Dihedral newDihedral;
+    newDihedral.atom1 = atoi(tokens[0].c_str());
+    newDihedral.atom3 = atoi(tokens[1].c_str());
+    newDihedral.atom4 = atoi(tokens[2].c_str());
+    newDihedral.atom2 = atoi(tokens[3].c_str());
+    int initialType = atoi(tokens[4].c_str());
+    // int finalType = atoi(tokens[5].c_str());
+    char hashNumString[10];
+    sprintf(hashNumString, "%03d", initialType);
+    Fourier fourierData = {0,0,0,0};
+    if (initialType != 0) {
+     fourierData = oplsScanner->getFourier(string(hashNumString));
+    }
+    //TODO what to do if fourierData is not found in opls.par?
+
+    newDihedral.V1 = fourierData.vValues[0];
+    newDihedral.V2 = fourierData.vValues[1];
+    newDihedral.V3 = fourierData.vValues[2];
+    newDihedral.V4 = fourierData.vValues[3];
+    newDihedral.value = 0;
+    newDihedral.maxAngleChange = 0;
+    newDihedral.variable = false;
+
+    dihedralVector.push_back(newDihedral);
+  } else {
+    //TODO what if there are not exactly 6 arguments?
+  }
+}
+
+vector<string> ZmatrixScanner::tokenizeAdditionalLine(string line) {
+  vector<string> tokens;
+  const char *delims = " ,-";
+
+  char *line_c = strdup(line.c_str());
+  char *result = strtok(line_c, delims);
+  while (result != NULL) {
+    tokens.push_back(string(result));
+    result = strtok(NULL, delims);
+  }
+  free(line_c);
+  return tokens;
 }

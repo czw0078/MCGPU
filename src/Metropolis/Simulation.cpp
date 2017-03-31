@@ -166,7 +166,7 @@ void Simulation::run() {
     oldEnergy_sb += energy_LRC;
   }
   function_time_end = clock();
-  GPUCopy::copyOut(sb);
+  // GPUCopy::copyOut(sb);
   double duration = difftime(function_time_end, function_time_start) / CLOCKS_PER_SEC;
 
   //for testing/debug purposes
@@ -195,6 +195,58 @@ void Simulation::run() {
     writePDB(box->getEnvironment(), box->getMolecules(), sb, std::string(pdbFileName));
   }
   */
+
+  //DEBUG: print all SimBox data
+  printf("Printing all Bond data found in the SimBox\n");
+  for (int i = 0; i < sb->numMolecules; i++) {
+    int bondStart = sb->moleculeData[MOL_BOND_START * sb->numMolecules + i];
+    int nBonds = sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + i];
+    for (int j = 0; j < nBonds; j++) {
+      printf("Bond %d.%d: %d-%d, %5.2f, %5.2f, %d\n", i, j,
+        (int)sb->bondData[BOND_A1_IDX][bondStart+j],
+        (int)sb->bondData[BOND_A2_IDX][bondStart+j],
+        sb->bondData[BOND_KBOND][bondStart+j],
+        sb->bondData[BOND_EQDIST][bondStart+j],
+        (bool)sb->bondData[BOND_VARIABLE][bondStart+j]);
+    }
+  }
+
+  printf("Printing all Angle data found in the SimBox\n");
+  for (int i = 0; i < sb->numMolecules; i++) {
+    int angleStart = sb->moleculeData[MOL_ANGLE_START * sb->numMolecules + i];
+    int nAngles = sb->moleculeData[MOL_ANGLE_COUNT * sb->numMolecules + i];
+    for (int j = 0; j < nAngles; j++) {
+      printf("Angle %d.%d: %d-%d-%d, %5.2f, %6.2f, %d\n", i, j,
+        (int)sb->angleData[ANGLE_A1_IDX][angleStart+j],
+        (int)sb->angleData[ANGLE_MID_IDX][angleStart+j],
+        (int)sb->angleData[ANGLE_A2_IDX][angleStart+j],
+        sb->angleData[ANGLE_KANGLE][angleStart+j],
+        sb->angleData[ANGLE_EQANGLE][angleStart+j],
+        (bool)sb->angleData[ANGLE_VARIABLE][angleStart+j]);
+    }
+  }
+  printf("Printing all Dihedral data found in the SimBox\n");
+  for (int i = 0; i < sb->numMolecules; i++) {
+    int dihedralStart = sb->moleculeData[MOL_DIHEDRAL_START * sb->numMolecules + i];
+    int nDihedrals = sb->moleculeData[MOL_DIHEDRAL_COUNT * sb->numMolecules + i];
+    for (int j = 0; j < nDihedrals; j++) {
+      printf("Dihedral %d.%d: %d-%d-%d-%d, %5.2f, %5.2f, %d\n", i, j,
+        (int)sb->dihedralData[DIHEDRAL_A1_IDX][dihedralStart+j],
+        (int)sb->dihedralData[DIHEDRAL_A3_IDX][dihedralStart+j],
+        (int)sb->dihedralData[DIHEDRAL_A4_IDX][dihedralStart+j],
+        (int)sb->dihedralData[DIHEDRAL_A2_IDX][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_INIT_VALUE][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_MAX_CHANGE][dihedralStart+j],
+        (bool)sb->dihedralData[DIHEDRAL_VARIABLE][dihedralStart+j]);
+
+      printf("    fourier: (%6.2f, %6.2f, %6.2f, %6.2f)\n\n",
+        sb->dihedralData[DIHEDRAL_V1_IDX][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_V2_IDX][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_V3_IDX][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_V4_IDX][dihedralStart+j]);
+
+    }
+  }
 
   /* DEBUG: do not perform main simloop
   // ----- Main simulation loop -----

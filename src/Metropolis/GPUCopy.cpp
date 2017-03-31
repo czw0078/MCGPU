@@ -51,7 +51,7 @@ SimBox* GPUCopy::simBoxCPU() {
 
 void GPUCopy::copyIn(SimBox *sb) {
   h_sb = sb;
-
+/*
   cudaMalloc(&d_sb, sizeof(SimBox));
   assert(d_sb != NULL);
   cudaMemcpy(d_sb, h_sb, sizeof(SimBox), cudaMemcpyHostToDevice);
@@ -112,7 +112,7 @@ void GPUCopy::copyIn(SimBox *sb) {
   cudaMemcpy(&devPtr, &(d_sb->size), sizeof(Real*), cudaMemcpyDeviceToHost);
 
   cudaMemcpy(&devPtr, &(d_sb->atomCoordinates), sizeof(Real*), cudaMemcpyDeviceToHost);
-
+*/
   // TODO - ANGLE AND BOND DATA
 }
 
@@ -151,4 +151,3 @@ void GPUCopy::copyOut(SimBox* sb) {
   cudaMemcpy(sb->rollBackBondLengths, d_rollBackBondLengths , sb->numBonds *
     sizeof(Real), cudaMemcpyDeviceToHost);
 }
-

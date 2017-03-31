@@ -207,8 +207,14 @@ struct Dihedral {
     /** The initial angle between the planes, in degrees */
     Real value;
 
-    /** Stores the Fourier Sum constants for the dihedral*/
-    Fourier fourierInfo;
+    /** The maximum allowable twist angle for this dihedral*/
+    Real maxAngleChange;
+
+    /** Store the Fourier Sum constants for the dihedral*/
+    Real V1;
+    Real V2;
+    Real V3;
+    Real V4;
 
     /** True if the distance between atoms is variable */
     bool variable;
@@ -216,8 +222,15 @@ struct Dihedral {
     Dihedral() {
       atom1 = 0;
       atom2 = 0;
+      atom3 = 0;
+      atom4 = 0;
       value = 0;
-      variable = true;
+      maxAngleChange = 0;
+      V1 = 0;
+      V2 = 0;
+      V3 = 0;
+      V4 = 0;
+      variable = false;
   }
 
 

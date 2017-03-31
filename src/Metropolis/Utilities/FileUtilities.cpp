@@ -439,7 +439,7 @@ bool buildBoxData(Environment* enviro, vector<Molecule>& molecVec, Box* box,
       box->molecules[j].angles[k] = molec1.angles[k];
       int a1Idx = molec1.angles[k].atom1;
       int a2Idx = molec1.angles[k].atom2;
-      if (box->molecules[j].angles[k].commonAtom != 0) {
+      if (box->molecules[j].angles[k].commonAtom == 0) {
         box->molecules[j].angles[k].commonAtom = getCommonAtom(bondVector,
                                                                a1Idx, a2Idx);
       }
@@ -571,6 +571,7 @@ bool generatefccBox(Box* box) {
   halfcellL = 0.5 * cellL;
 
   //Construct the unit cell
+  // FIXME: unchecked accesses to variable-size array (molecules[]) causes seg faults for small sims
   for (int j = 0; j < molecules[0].numOfAtoms; j++) {
     molecules[0].atoms[j].x += 0.0;
     molecules[0].atoms[j].y += 0.0;

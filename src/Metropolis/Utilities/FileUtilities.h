@@ -381,6 +381,59 @@ class ZmatrixScanner {
   /** Add any unspecified angles implied by the z-matrix files */
   void addImpliedAngles(vector<Angle>& angleVector, vector<Bond> bondVector);
 
+  /**
+   * Move molecule data from vectors into arrays and store as Molecules structs
+   */
+  void finalizeMolecules();
+
+  /**
+   * Handles a "Variable Bond" line from the Z-matrix file -
+   *   alters the contents of bondVector to make some number of bonds "variable"
+   * @param line - a line from the z-matrix file
+   */
+  void handleVariableBond(string line);
+
+  /**
+   * Handles an "Additional Bond" line from the Z-matrix file -
+   *   adds a new Bond to bondVector
+   * @param line - a line from the z-matrix file
+   */
+  void handleAdditionalBond(string line);
+
+  /**
+   * Handles an "Variable Angle" line from the Z-matrix file -
+   *   alters the contents of angleVector to make some number of angles "variable"
+   * @param line - a line from the z-matrix file
+   */
+  void handleVariableAngle(string line);
+
+  /**
+   * Handles an "Additional Angle" line from the Z-matrix file -
+   *   adds a new Angle to angleVector
+   * @param line - a line from the z-matrix file
+   */
+  void handleAdditionalAngle(string line);
+
+  /**
+   * Handles an "Variable Dihedral" line from the Z-matrix file -
+   *   alters the contents of dihedralVector to make some number of dihedrals "variable"
+   * @param line - a line from the z-matrix file
+   */
+  void handleVariableDihedral(string line);
+
+  /**
+   * Handles an "Additional Dihedral" line from the Z-matrix file -
+   *   adds a new Dihedral to dihedralVector
+   * @param line - a line from the z-matrix file
+   */
+  void handleAdditionalDihedral(string line);
+
+  /**
+   * Tokenizes a line by separating on spaces, commas, and dashes
+   * @param line - the line to split
+   */
+  vector<string> tokenizeAdditionalLine(string line);
+
  public:
   ZmatrixScanner(); // constructor
   ~ZmatrixScanner();
