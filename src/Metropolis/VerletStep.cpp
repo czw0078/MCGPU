@@ -15,34 +15,37 @@ Real VerletStep::calcSystemEnergy(Real &subLJ, Real &subCharge, int numMolecules
 
 void VerletStep::createVerlet(){
 
-    SimBox* sb = GPUCopy::simBoxCPU();
-    Real *atomCoords = sb->atomCoordinates;
-    const int numAtoms = sb->numAtoms;
+    if(GPUCopy::onGpu()) {
+        // GPU implementation
+    } else {
+        VerletCalcs::freeMemory(this->h_verletList, this->h_verletAtomCoords);
 
-    VerletCalcs::freeMemory(this->h_verletList, this->vaCoords);
+        // Initialize a new verlet list
+        this->h_verletList = VerletCalcs::newVerletList();
 
-    this->h_verletList = VerletCalcs::newVerletList();
+        // Initialize memory & copy data for base atom coordinates
+        this->h_verletAtomCoords = new Real[NUM_DIMENSIONS * GPUCopy::simBoxCPU()->numAtoms];
+        for(int i = 0; i < NUM_DIMENSIONS * GPUCopy::simBoxCPU()->numAtoms; i++)
+            this->h_verletAtomCoords[i] = GPUCopy::simBoxCPU()->atomCoordinates[i];
 
-    vaCoords = new Real[NUM_DIMENSIONS * numAtoms];
-    for(int i = 0; i < NUM_DIMENSIONS * numAtoms; i++)
-        vaCoords[i] = atomCoords[i];
+    } // else GPU
 } // createVerlet
 
 void VerletStep::changeMolecule(int molIdx, SimBox *box) {
     SimulationStep::changeMolecule(molIdx, box);
-    if( VerletCalcs::updateVerlet(this->vaCoords, molIdx) )
+    if( VerletCalcs::updateVerlet(this->h_verletAtomCoords, molIdx) )
         VerletStep::createVerlet();
 }
 
 void VerletStep::rollback(int molIdx, SimBox *box) {
     SimulationStep::rollback(molIdx, box);
-    if( VerletCalcs::updateVerlet(this->vaCoords, molIdx) )
+    if( VerletCalcs::updateVerlet(this->h_verletAtomCoords, molIdx) )
         VerletStep::createVerlet();
 }
 
 VerletStep::~VerletStep() {
-  VerletCalcs::freeMemory(this->h_verletList, this->vaCoords);
-  this->vaCoords = NULL;
+  VerletCalcs::freeMemory(this->h_verletList, this->h_verletAtomCoords);
+  this->h_verletAtomCoords = NULL;
 }
 
 
@@ -56,7 +59,6 @@ Real VerletCalcs::calcMolecularEnergyContribution(int currMol, int startMol, thr
     Real *atomCoords = sb->atomCoordinates;
     Real *bSize = sb->size;
     int *pIdxes = sb->primaryIndexes;
-    Real *aData = sb->atomData;
     Real cutoff = sb->cutoff;
     const long numMolecules = sb->numMolecules;
     const int numAtoms = sb->numAtoms;
@@ -71,9 +73,7 @@ Real VerletCalcs::calcMolecularEnergyContribution(int currMol, int startMol, thr
                 int p2End = molData[MOL_PIDX_COUNT * numMolecules + otherMol] + p2Start;
                 if (SimCalcs::moleculesInRange(p1Start, p1End, p2Start, p2End,
                                        atomCoords, bSize, pIdxes, cutoff, numAtoms)) {
-                    total += calcMoleculeInteractionEnergy(currMol, otherMol, molData,
-                                                 aData, atomCoords, bSize,
-                                                 numMolecules, numAtoms);
+                    total += calcMoleculeInteractionEnergy(currMol, otherMol, sb);
                 }
             }
         }
@@ -90,17 +90,23 @@ Real VerletCalcs::calcMolecularEnergyContribution(int currMol, int startMol, thr
             if (SimCalcs::moleculesInRange(p1Start, p1End, p2Start, p2End,
                                 atomCoords, bSize, pIdxes, cutoff, numAtoms)) {
 
-                total += calcMoleculeInteractionEnergy(currMol, neighborIndex, molData,
-                               aData, atomCoords, bSize, numMolecules, numAtoms);
+                total += calcMoleculeInteractionEnergy(currMol, neighborIndex, sb);
             } // if
         } // for neighbors 
     } // else
     return total;
 } // calcMolecularEnergyContribution()
 
-Real VerletCalcs::calcMoleculeInteractionEnergy(int m1, int m2, int* molData, Real* aData, Real* aCoords,
-                                                    Real* bSize, int numMolecules, int numAtoms) {
+__host__ __device__
+Real VerletCalcs::calcMoleculeInteractionEnergy(int m1, int m2, SimBox* sb) {
     Real energySum = 0;
+
+    int *molData = sb->moleculeData;
+    Real *atomCoords = sb->atomCoordinates;
+    Real *bSize = sb->size;
+    Real *aData = sb->atomData;
+    const long numMolecules = sb->numMolecules;
+    const int numAtoms = sb->numAtoms;
 
     const int m1Start = molData[MOL_START * numMolecules + m1];
     const int m1End = molData[MOL_LEN * numMolecules + m1] + m1Start;
@@ -113,7 +119,7 @@ Real VerletCalcs::calcMoleculeInteractionEnergy(int m1, int m2, int* molData, Re
             if (aData[ATOM_SIGMA * numAtoms + i] >= 0 && aData[ATOM_SIGMA * numAtoms + j] >= 0
                 && aData[ATOM_EPSILON * numAtoms + i] >= 0 && aData[ATOM_EPSILON * numAtoms + j] >= 0) {
 
-                const Real r2 = SimCalcs::calcAtomDistSquared(i, j, aCoords, bSize, numAtoms);
+                const Real r2 = SimCalcs::calcAtomDistSquared(i, j, atomCoords, bSize, numAtoms);
                 if (r2 == 0.0) {
                     energySum += 0.0;
                 } else {
