@@ -1,9 +1,9 @@
 #include "SimBoxBuilder.h"
 
 
-SimBoxBuilder::SimBoxBuilder(bool useNLC, SBScanner* sbData_in) {
+SimBoxBuilder::SimBoxBuilder(SimulationArgs* args, SBScanner* sbData_in) {
   sb = new SimBox();
-  sb->useNLC = useNLC;
+  sb->useNLC = args->useNeighborList;
   sbData = sbData_in;
 }
 
@@ -13,9 +13,9 @@ SimBox* SimBoxBuilder::build(Box* box) {
   initEnvironment(box->environment);
   addMolecules(box->molecules, box->environment->primaryAtomIndexArray->size());
   addPrimaryIndexes(box->environment->primaryAtomIndexArray);
-  if (sb->useNLC) {
+
+  if (sb->useNLC) 
     fillNLC();
-  }
   return sb;
 }
 
@@ -322,3 +322,4 @@ void SimBoxBuilder::fillNLC() {
     sb->neighborCells[cloc[0]][cloc[1]][cloc[2]] = &(sb->nlc_heap[i]);
   }
 }
+

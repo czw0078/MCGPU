@@ -611,8 +611,6 @@ class SimBox {
    * @return The representative element of the atom index.
    */
   int find (int atomIdx);
-
-
 };
 
 typedef const SimBox & refBox;

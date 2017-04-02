@@ -177,3 +177,4 @@ Real Box::wrapBox(Real x, Real boxDim, int position) {
 
   return x;
 }
+

@@ -20,6 +20,7 @@
 #include "SimulationStep.h"
 #include "BruteForceStep.h"
 #include "ProximityMatrixStep.h"
+#include "Metropolis/VerletStep.h"
 #include "Box.h"
 #include "Metropolis/Utilities/MathLibrary.h"
 #include "Metropolis/Utilities/Parsing.h"
@@ -70,6 +71,8 @@ void Simulation::run() {
 
   if (args.useNeighborList) {
     box->createNeighborList();
+  } else if(args.strategy == Strategy::VerletList) {
+    args.useVerletList = true;
   }
 
   Real oldEnergy_sb = 0;
@@ -116,7 +119,7 @@ void Simulation::run() {
   }
 
   // Build SimBox below
-  SimBoxBuilder builder = SimBoxBuilder(args.useNeighborList, sbScanner);
+  SimBoxBuilder builder = SimBoxBuilder(&args, sbScanner);
   bool parallel = args.simulationMode == SimulationMode::Parallel;
   SimBox* sb = builder.build(box);
   GPUCopy::setParallel(parallel);
@@ -138,6 +141,9 @@ void Simulation::run() {
   } else if (args.strategy == Strategy::ProximityMatrix) {
     log.verbose("Using proximity matrix strategy for energy calculations");
     simStep = new ProximityMatrixStep(sb);
+  } else if (args.strategy == Strategy::VerletList) {
+    log.verbose("Using verlet list strategy for energy calculations");
+    simStep = new VerletStep(sb);
   } else {
     log.verbose("No energy calculation strategy specified, defaulting to "
                 "brute force");
@@ -175,7 +181,7 @@ void Simulation::run() {
   log.verbose(durationConv.str());
 
   std::stringstream simStepsConv;
-  simStepsConv << "\nRunning " << (simSteps) << " steps\n";
+  simStepsConv << "Running " << (simSteps) << " steps\n";
   log.verbose(simStepsConv.str());
 
   std::string baseStateFile = "";

@@ -65,3 +65,4 @@ void SimBox::updateNLC(int molIdx) {
     }
   }
 }
+

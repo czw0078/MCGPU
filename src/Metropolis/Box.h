@@ -268,6 +268,8 @@ class Box
 		 */
 		Real wrapBox(Real x, Real boxDim, int position);
 
+        unsigned long getChangedMolSize() { return sizeof(changedMol); } ;
+
 };
 
 #endif
