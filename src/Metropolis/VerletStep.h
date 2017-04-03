@@ -17,8 +17,7 @@ class VerletStep: public SimulationStep {
     public:
         explicit VerletStep(SimBox* box): SimulationStep(box),
                                     h_verletList(0),
-                                    h_verletAtomCoords(NULL) {}
-//                                    h_verletAtomCoords(0),
+                                    h_verletAtomCoords(0) {}
 //                                    d_verletList(0),
 //                                    d_verletAtomCoords(NULL) {}
 
@@ -40,7 +39,7 @@ class VerletStep: public SimulationStep {
 
     private:
         thrust::host_vector<int> h_verletList;
-        Real* h_verletAtomCoords;
+        thrust::host_vector<Real> h_verletAtomCoords;
 //        thrust::device_vector<int> d_verletList;
 //        Real* d_verletAtomCoords;
         void createVerlet();
@@ -85,12 +84,12 @@ namespace VerletCalcs {
      *
      * @return True/False if an update needs to take place
      */
-    bool updateVerlet(Real* vaCoords, int i);
+    bool updateVerlet(thrust::host_vector<Real> &vaCoords, int i);
     
     /**
      * Frees memory used for a CPU run
      */
-    void freeMemory(thrust::host_vector<int> &h_verletList, Real* verletAtomCoords);
+    void freeMemory(thrust::host_vector<int> &h_verletList, thrust::host_vector<Real> &vaCoords);
 
     /**
      * Creates a new verlet list for CPU run
