@@ -150,6 +150,7 @@ bool VerletCalcs::updateVerlet(thrust::host_vector<Real> &vaCoords, int i) {
     return false;
 } // updateVerlet()
 
+__host__
 thrust::host_vector<int> VerletCalcs::newVerletList(){
     SimBox* sb = GPUCopy::simBoxCPU();
     int *molData = sb->moleculeData;
@@ -189,6 +190,13 @@ thrust::host_vector<int> VerletCalcs::newVerletList(){
     } // for molecule i
     return verletList;
 } // newVerletList()
+
+
+thrust::device_vector<int> VerletCalcs::newVerletListGPU() {
+    thrust::device_vector<int> verletList(5000);
+    verletList.resize(10000);
+    return verletList;
+}
 
 void VerletCalcs::freeMemory(thrust::host_vector<int> &verletList, thrust::host_vector<Real> &verletAtomCoords) {
     verletList.clear();

@@ -24,6 +24,7 @@
 #include "Box.h"
 #include "Metropolis/Utilities/MathLibrary.h"
 #include "Metropolis/Utilities/Parsing.h"
+#include "ParallelSim/ParallelCalcs.h"
 #include "SerialSim/SerialBox.h"
 #include "SerialSim/SerialCalcs.h"
 #include "SerialSim/NeighborList.h"
@@ -82,7 +83,7 @@ void Simulation::run() {
   Real new_lj = 0, old_lj = 0;
   Real new_charge = 0, old_charge = 0;
 
-  Real energy_LRC = SerialCalcs::calcEnergy_LRC(box);
+  Real energy_LRC = 0.0;
 
   int accepted = 0;
   int rejected = 0;
@@ -169,6 +170,11 @@ void Simulation::run() {
     }
     oldEnergy_sb = simStep->calcSystemEnergy(lj_energy, charge_energy,
                                              sb->numMolecules);
+    if(parallel)
+        energy_LRC = ParallelCalcs::calcEnergy_LRC();
+    else
+        energy_LRC = SerialCalcs::calcEnergy_LRC(box);
+
     oldEnergy_sb += energy_LRC;
   }
   function_time_end = clock();

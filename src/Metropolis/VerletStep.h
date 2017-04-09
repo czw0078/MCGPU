@@ -96,7 +96,11 @@ namespace VerletCalcs {
      *
      * @return A host_vector<int> representing a verlet list
      */
+    __host__
     thrust::host_vector<int> newVerletList();
+
+    thrust::device_vector<int> newVerletListGPU();
+
 }
 
 #endif
