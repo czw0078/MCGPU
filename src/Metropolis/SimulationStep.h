@@ -167,12 +167,22 @@ namespace SimCalcs {
   /**
    * Twists the given bond in the given molecule
    *
-   * @param molIdx The index of the molecule that the angle is in.
-   * @param bondIdx The index of the bond within the molecule. For example, the
-   *     first bond in molecule 12 has index 0.
+   * @param molIdx The index of the molecule that the dihedral is in.
+   * @param bondIdx The index of the dihedral within the molecule. For example, the
+   *     first dihedral in molecule 12 has index 0.
    * @param twistDeg The amount to twist the angle. TODO more details here
    */
   void twistBond(int molIdx, int bondIdx, Real twistDeg);
+
+  /**
+   * Calculates the current (Unsigned) value of the given dihedral
+   *
+   * @param molIdx The index of the molecule that the angle is in.
+   * @param dihIdx The index of the dihedral within the molecule
+   * @return The current angle, in degrees, formed between the two planes
+   *    defined by the given dihedral. Result will fall in the range (0, 180)
+   */
+  Real calcDihedralAngle(int molIdx, int dihIdx);
 
   /**
    * Determines whether or not two molecule's primaryIndexes are within the

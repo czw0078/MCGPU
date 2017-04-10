@@ -395,6 +395,64 @@ void SimCalcs::twistBond(int molIdx, int bondIdx, Real twistDeg) {
 
 }
 
+Real SimCalcs::calcDihedralAngle(int molIdx, int dihIdx) {
+  Real RAD2DEG = 180.0 / 3.14159256358979323846264;
+  Real* aCoords = sb->atomCoordinates;
+  int numAtoms = sb->numAtoms;
+
+  int dihStart = sb->moleculeData[MOL_DIHEDRAL_START * sb->numMolecules + molIdx];
+  int realDihIdx = dihStart + dihIdx;
+  int atomIndices[4];
+  atomIndices[0] = sb->dihedralData[DIHEDRAL_A1_IDX][realDihIdx];
+  atomIndices[1] = sb->dihedralData[DIHEDRAL_A2_IDX][realDihIdx];
+  atomIndices[2] = sb->dihedralData[DIHEDRAL_A3_IDX][realDihIdx];
+  atomIndices[3] = sb->dihedralData[DIHEDRAL_A4_IDX][realDihIdx];
+
+  Real dihAtomCoords[4][NUM_DIMENSIONS];
+  for (int atomNum = 0; atomNum < 4; atomNum++) {
+    for (int i = 0; i < NUM_DIMENSIONS; i++) {
+      dihAtomCoords[atomNum][i] = aCoords[i*numAtoms + atomIndices[atomNum]];
+    }
+  }
+
+  // Compute vectors from a3->a1, a3->a4, and a3->a2
+  Real a3a1[NUM_DIMENSIONS];
+  Real a3a4[NUM_DIMENSIONS];
+  Real a3a2[NUM_DIMENSIONS];
+  for (int i = 0; i < NUM_DIMENSIONS; i++) {
+    a3a1[i] = dihAtomCoords[2][i] - dihAtomCoords[0][i];
+    a3a4[i] = dihAtomCoords[2][i] - dihAtomCoords[3][i];
+    a3a2[i] = dihAtomCoords[2][i] - dihAtomCoords[1][i];
+  }
+
+  // Compute Normal vectors to the two planes using cross products
+  Real p1Normal[NUM_DIMENSIONS];
+  Real p2Normal[NUM_DIMENSIONS];
+  for (int i = 0; i < NUM_DIMENSIONS; i++) {
+    p1Normal[i] = a3a4[(i+1)%NUM_DIMENSIONS]*a3a1[(i+2)%NUM_DIMENSIONS]
+                    -a3a4[(i+2)%NUM_DIMENSIONS]*a3a1[(i+1)%NUM_DIMENSIONS];
+    p2Normal[i] = a3a4[(i+1)%NUM_DIMENSIONS]*a3a2[(i+2)%NUM_DIMENSIONS]
+                    -a3a4[(i+2)%NUM_DIMENSIONS]*a3a2[(i+1)%NUM_DIMENSIONS];
+  }
+
+  // Compute lengths of normal vectors, and dot product of the vectors
+  // TODO what if one of the angles is 180d, so the dihedral doesn't exist?
+  Real p1NormalLength = 0;
+  Real p2NormalLength = 0;
+  Real dotProduct = 0;
+  for (int i = 0; i < NUM_DIMENSIONS; i++) {
+    p1NormalLength += p1Normal[i]*p1Normal[i];
+    p2NormalLength += p2Normal[i]*p2Normal[i];
+    dotProduct += p1Normal[i]*p2Normal[i];
+  }
+  p1NormalLength = sqrt(p1NormalLength);
+  p2NormalLength = sqrt(p2NormalLength);
+
+  Real unsignedAngle = acos(dotProduct/(p1NormalLength*p2NormalLength))*RAD2DEG;
+
+  return unsignedAngle;
+}
+
 __device__ __host__
 bool SimCalcs::moleculesInRange(int p1Start, int p1End, int p2Start, int p2End,
                                 Real* atomCoords, Real* bSize,

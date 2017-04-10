@@ -239,12 +239,13 @@ void Simulation::run() {
         sb->dihedralData[DIHEDRAL_MAX_CHANGE][dihedralStart+j],
         (bool)sb->dihedralData[DIHEDRAL_VARIABLE][dihedralStart+j]);
 
-      printf("    fourier: (%6.2f, %6.2f, %6.2f, %6.2f)\n\n",
+      printf("    fourier: (%6.2f, %6.2f, %6.2f, %6.2f)\n",
         sb->dihedralData[DIHEDRAL_V1_IDX][dihedralStart+j],
         sb->dihedralData[DIHEDRAL_V2_IDX][dihedralStart+j],
         sb->dihedralData[DIHEDRAL_V3_IDX][dihedralStart+j],
         sb->dihedralData[DIHEDRAL_V4_IDX][dihedralStart+j]);
 
+      printf("    measured angle: %f\n\n", SimCalcs::calcDihedralAngle(i,j));
     }
   }
 
