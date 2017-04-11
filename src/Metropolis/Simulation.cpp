@@ -230,14 +230,20 @@ void Simulation::run() {
     int dihedralStart = sb->moleculeData[MOL_DIHEDRAL_START * sb->numMolecules + i];
     int nDihedrals = sb->moleculeData[MOL_DIHEDRAL_COUNT * sb->numMolecules + i];
     for (int j = 0; j < nDihedrals; j++) {
-      printf("Dihedral %d.%d: %d-%d-%d-%d, %5.2f, %5.2f, %d\n", i, j,
+      printf("Dihedral %d.%d: %d-%d-%d-%d, %5.2f..(%5.2f,%5.2f), %d\n", i, j,
         (int)sb->dihedralData[DIHEDRAL_A1_IDX][dihedralStart+j],
         (int)sb->dihedralData[DIHEDRAL_A3_IDX][dihedralStart+j],
         (int)sb->dihedralData[DIHEDRAL_A4_IDX][dihedralStart+j],
         (int)sb->dihedralData[DIHEDRAL_A2_IDX][dihedralStart+j],
         sb->dihedralData[DIHEDRAL_INIT_VALUE][dihedralStart+j],
-        sb->dihedralData[DIHEDRAL_MAX_CHANGE][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_MIN_MEASURE][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_MAX_MEASURE][dihedralStart+j],
         (bool)sb->dihedralData[DIHEDRAL_VARIABLE][dihedralStart+j]);
+
+      printf("    diehdral is : %s\n",
+        ((bool)sb->dihedralData[DIHEDRAL_IS_PROPER][dihedralStart+j]
+          ? "proper" : "improper")
+      );
 
       printf("    fourier: (%6.2f, %6.2f, %6.2f, %6.2f)\n",
         sb->dihedralData[DIHEDRAL_V1_IDX][dihedralStart+j],

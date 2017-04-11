@@ -201,8 +201,10 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
       sb->dihedralData[DIHEDRAL_V3_IDX][dihedralIdx] = d.V3;
       sb->dihedralData[DIHEDRAL_V4_IDX][dihedralIdx] = d.V4;
       sb->dihedralData[DIHEDRAL_INIT_VALUE][dihedralIdx] = d.value;
-      sb->dihedralData[DIHEDRAL_MAX_CHANGE][dihedralIdx] = d.maxAngleChange;
+      sb->dihedralData[DIHEDRAL_MIN_MEASURE][dihedralIdx] = d.minAngleMeasure;
+      sb->dihedralData[DIHEDRAL_MAX_MEASURE][dihedralIdx] = d.maxAngleMeasure;
       sb->dihedralData[DIHEDRAL_VARIABLE][dihedralIdx] = d.variable;
+      sb->dihedralData[DIHEDRAL_IS_PROPER][dihedralIdx] = d.isProper;
       dihedralIdx++;
     }
 

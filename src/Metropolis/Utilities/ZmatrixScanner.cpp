@@ -514,6 +514,11 @@ void ZmatrixScanner::finalizeMolecules() {
     addImpliedAngles(angleVector, bondVector);
   }
 
+  // Determine whether each dihedral is an "improper" torsion
+  for (int i = 0; i < dihedralVector.size(); i++) {
+    dihedralVector[i].isProper = isProperTorsion(dihedralVector[i]);
+  }
+
   double atomVectorSize = atomVector.size();
   atomArray = (Atom*) malloc(sizeof(Atom) * atomVector.size());
   bondArray = (Bond*) malloc(sizeof(Bond) * bondVector.size());
@@ -612,7 +617,8 @@ void ZmatrixScanner::handleVariableDihedral(string line) {
         dihedralVector[i].V2 = fourierData.vValues[1];
         dihedralVector[i].V3 = fourierData.vValues[2];
         dihedralVector[i].V4 = fourierData.vValues[3];
-        dihedralVector[i].maxAngleChange = maxAngleChange;
+        dihedralVector[i].minAngleMeasure = dihedralVector[i].value - maxAngleChange;
+        dihedralVector[i].maxAngleMeasure = dihedralVector[i].value + maxAngleChange;
         dihedralVector[i].variable = true;
       }
     }
@@ -645,8 +651,10 @@ void ZmatrixScanner::handleAdditionalDihedral(string line) {
     newDihedral.V3 = fourierData.vValues[2];
     newDihedral.V4 = fourierData.vValues[3];
     newDihedral.value = 0;
-    newDihedral.maxAngleChange = 0;
+    newDihedral.minAngleMeasure = 0;
+    newDihedral.maxAngleMeasure = 0;
     newDihedral.variable = false;
+    newDihedral.isProper = true;
 
     dihedralVector.push_back(newDihedral);
   } else {
@@ -666,4 +674,16 @@ vector<string> ZmatrixScanner::tokenizeAdditionalLine(string line) {
   }
   free(line_c);
   return tokens;
+}
+
+bool ZmatrixScanner::isProperTorsion(Dihedral dih) {
+  //TODO if dih.atom2 is bonded to dih.atom4, return true. Else, return false.
+  for (int i = 0; i < bondVector.size(); i++) {
+    Bond b = bondVector[i];
+    if (b.atom1 == dih.atom2 && b.atom2 == dih.atom4 ||
+        b.atom2 == dih.atom2 && b.atom1 == dih.atom4) {
+      return true;
+    }
+  }
+  return false;
 }

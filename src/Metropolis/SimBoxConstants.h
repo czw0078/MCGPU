@@ -164,12 +164,16 @@
 
 // Indicates the row of dihedralData holding the maximumum total amount that
 //     each dihedral can be twisted during pertubation
-#define DIHEDRAL_MAX_CHANGE 9
+#define DIHEDRAL_MIN_MEASURE 9
+#define DIHEDRAL_MAX_MEASURE 10
 
 // Indicates the row of dihedral holding whether each dihedral is variable.
-#define DIHEDRAL_VARIABLE 10
+#define DIHEDRAL_VARIABLE 11
+
+// Indicates the row of dihedral holding whether each torsion is "proper".
+#define DIHEDRAL_IS_PROPER 12
 
 // Indicates the number of rows in dihedralData
-#define DIHEDRAL_DATA_SIZE 11
+#define DIHEDRAL_DATA_SIZE 13
 
 #endif

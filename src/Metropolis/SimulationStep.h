@@ -158,9 +158,9 @@ namespace SimCalcs {
   /**
    * Calculates the energy from twisted bonds within the given molecule.
    *
-   * @param molIdx The index of the molecule to calculate the energy of.
-   * @return The energy produced by bonds being twisted from their
-   *     equilibrium dihedral. //TODO phrasing
+   * @param molIdx The index of the molecule for which
+   *     dihedral energy should be computed
+   * @return The total energy contained in 4-atom torsions for that molecule
    */
   Real torsionEnergy(int molIdx);
 

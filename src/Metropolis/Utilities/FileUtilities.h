@@ -401,7 +401,7 @@ class ZmatrixScanner {
   void handleAdditionalBond(string line);
 
   /**
-   * Handles an "Variable Angle" line from the Z-matrix file -
+   * Handles a "Variable Angle" line from the Z-matrix file -
    *   alters the contents of angleVector to make some number of angles "variable"
    * @param line - a line from the z-matrix file
    */
@@ -415,7 +415,7 @@ class ZmatrixScanner {
   void handleAdditionalAngle(string line);
 
   /**
-   * Handles an "Variable Dihedral" line from the Z-matrix file -
+   * Handles a "Variable Dihedral" line from the Z-matrix file -
    *   alters the contents of dihedralVector to make some number of dihedrals "variable"
    * @param line - a line from the z-matrix file
    */
@@ -433,6 +433,13 @@ class ZmatrixScanner {
    * @param line - the line to split
    */
   vector<string> tokenizeAdditionalLine(string line);
+
+  /**
+   * Determines whether a Dihedral represents a "proper" torsion
+   * @param dih - the dihedral to evaluate
+   * @return - true if dih.atom2 is bonded to dih.atom4, false otherwise
+   */
+  bool isProperTorsion(Dihedral dih);
 
  public:
   ZmatrixScanner(); // constructor
