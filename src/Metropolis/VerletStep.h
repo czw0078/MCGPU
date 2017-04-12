@@ -21,7 +21,8 @@ class VerletStep: public SimulationStep {
         thrust::host_vector<Real> h_verletAtomCoords;
         thrust::device_vector<int> d_verletList;
         thrust::device_vector<Real> d_verletAtomCoords;
-        void createVerlet();
+
+        void resizeThrustVectors();
 
     public:
         explicit VerletStep(SimBox* box): SimulationStep(box),
@@ -74,6 +75,8 @@ namespace VerletCalcs {
     __host__ __device__
     void calcMolecularEnergyContribution(int currMol, int startMol, SimBox* sb, int* verletList, int verletListLength);
 
+    __global__ 
+    void energyContribution_Kernel(int currMol, int startMol, SimBox* sb, int* verletList, int verletListLength);
      /**
       * Determines whether or not two molecule's primaryIndexes are
       * within the cutoff range of one another and calculates the 
@@ -88,12 +91,22 @@ namespace VerletCalcs {
     Real calcMoleculeInteractionEnergy (int m1, int m2, SimBox* sb);
 
     /**
+     *
+     */
+    __host__ __device__
+    void createVerlet(int* verletList, Real* verletAtomCoords, int verletListLength, int vaCoordsLength, SimBox* sb);
+    
+    /**
      * Checks if the verlet list needs to be updated to account for 
      * changes to molecule positions
      *
      * @return True/False if an update needs to take place
      */
-    bool updateVerlet(thrust::host_vector<Real> &vaCoords, int i);
+    __host__ __device__
+    void updateVerlet(Real* vaCoords, SimBox* sb, int i);
+
+    __global__
+    void updateVerlet_Kernel();
 
     /**
      * Frees memory used by verlet lists and coordinate lists
@@ -108,6 +121,9 @@ namespace VerletCalcs {
      */
     __host__ __device__
     int* newVerletList(SimBox* sb, int verletListLength);
+
+    __global__
+    void newVerletList_Kernel(int* &verletList, int verletListLength);
 }
 
 #endif

@@ -26,6 +26,8 @@ class SimBox {
   
   Real energy;
   
+  bool updateVerlet;
+
   Real longRangeCorrection;
 
   /**
