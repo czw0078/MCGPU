@@ -22,6 +22,7 @@ class VerletStep: public SimulationStep {
         thrust::device_vector<int> d_verletList;
         thrust::device_vector<Real> d_verletAtomCoords;
 
+        void checkOutsideSkinLayer(int molIdx);
         void resizeThrustVectors();
 
     public:
@@ -33,7 +34,7 @@ class VerletStep: public SimulationStep {
 
             VERLET_SIZE = box->numMolecules * box->numMolecules;
             VACOORDS_SIZE = NUM_DIMENSIONS * box->numAtoms;
-                                    }
+        }
 
         virtual ~VerletStep();
         virtual Real calcSystemEnergy(Real &subLJ, Real &subCharge, int numMolecules);
@@ -50,7 +51,6 @@ class VerletStep: public SimulationStep {
         virtual Real calcMolecularEnergyContribution(int currMol, int startMol);
         virtual void changeMolecule(int molIdx, SimBox *box);
         virtual void rollback(int molIdx, SimBox *box);
-
 };
 
 /**
@@ -96,6 +96,12 @@ namespace VerletCalcs {
     __host__ __device__
     void createVerlet(int* verletList, Real* verletAtomCoords, int verletListLength, int vaCoordsLength, SimBox* sb);
     
+    /*
+     *
+     */
+    __global__
+    void createVerlet_Kernel(int* verletList, Real* verletAtomCoords, int verletListLength, int vaCoordsLength, SimBox* sb);
+    
     /**
      * Checks if the verlet list needs to be updated to account for 
      * changes to molecule positions
@@ -105,8 +111,11 @@ namespace VerletCalcs {
     __host__ __device__
     void updateVerlet(Real* vaCoords, SimBox* sb, int i);
 
+    /**
+     * CUDA kernel to call VerletCalcs::updateVerlet on the GPU
+     */
     __global__
-    void updateVerlet_Kernel();
+    void updateVerlet_Kernel(Real* vaCoords, SimBox* sb, int i);
 
     /**
      * Frees memory used by verlet lists and coordinate lists
@@ -121,9 +130,6 @@ namespace VerletCalcs {
      */
     __host__ __device__
     int* newVerletList(SimBox* sb, int verletListLength);
-
-    __global__
-    void newVerletList_Kernel(int* &verletList, int verletListLength);
 }
 
 #endif
