@@ -185,20 +185,21 @@ void Simulation::run() {
     baseStateFile.append("untitled");
   }
 
-  /* DEBUG: These lines demo the twistBond function
+  /* DEBUG: These lines demo the alterDihedral function*/
   writePDB(box->getEnvironment(), box->getMolecules(), sb, "initialState");
-  SimCalcs::twistBond(0,3,45);
-  char pdbFileName[100];
+  SimCalcs::alterDihedral(0,23,30);
+  /*char pdbFileName[100];
   for (int i = 0; i < 15; i++) {
     sprintf(pdbFileName, "rotated%d", i);
-    SimCalcs::twistBond(0,i,30);
+    SimCalcs::alterDihedral(0,i,30);
     writePDB(box->getEnvironment(), box->getMolecules(), sb, std::string(pdbFileName));
   }
   */
 
   //DEBUG: print all SimBox data
   printf("Printing all Bond data found in the SimBox\n");
-  for (int i = 0; i < sb->numMolecules; i++) {
+  for (int i = 0; i < 1; i++) {
+  // for (int i = 0; i < sb->numMolecules; i++) {
     int bondStart = sb->moleculeData[MOL_BOND_START * sb->numMolecules + i];
     int nBonds = sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + i];
     for (int j = 0; j < nBonds; j++) {

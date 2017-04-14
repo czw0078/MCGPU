@@ -313,32 +313,45 @@ Real SimCalcs::torsionEnergy(int molIdx) {
   return 0;
 }
 
-void SimCalcs::twistBond(int molIdx, int bondIdx, Real twistDeg) {
+void SimCalcs::alterDihedral(int molIdx, int dihIdx, Real twistDeg) {
   int bondStart = sb->moleculeData[MOL_BOND_START * sb->numMolecules + molIdx];
   int bondEnd = bondStart + sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + molIdx];
+  int dihStart = sb->moleculeData[MOL_DIHEDRAL_START * sb->numMolecules + molIdx];
   int startIdx = sb->moleculeData[MOL_START * sb->numMolecules + molIdx];
   int molSize = sb->moleculeData[MOL_LEN * sb->numMolecules + molIdx];
-  int end1 = (int)sb->bondData[BOND_A1_IDX][bondStart + bondIdx];
-  int end2 = (int)sb->bondData[BOND_A2_IDX][bondStart + bondIdx];
+  int atom1 = (int)sb->dihedralData[DIHEDRAL_A1_IDX][dihStart + dihIdx];
+  int atom2 = (int)sb->dihedralData[DIHEDRAL_A2_IDX][dihStart + dihIdx];
+  int atom3 = (int)sb->dihedralData[DIHEDRAL_A3_IDX][dihStart + dihIdx];
+  int atom4 = (int)sb->dihedralData[DIHEDRAL_A4_IDX][dihStart + dihIdx];
+
   Real* aCoords = sb->atomCoordinates;
   int numAtoms = sb->numAtoms;
 
+  //Initialize Union-Find
   for (int i = 0; i < molSize; i++) {
     sb->unionFindParent[i] = i;
   }
 
   // Split the molecule atoms into two disjoint sets around the bond
   for (int i = bondStart; i < bondEnd; i++) {
-    if (i == bondIdx + bondStart)
+    int b1 = (int)sb->bondData[BOND_A1_IDX][i] - startIdx;
+    int b2 = (int)sb->bondData[BOND_A2_IDX][i] - startIdx;
+
+    if (!sb->dihedralData[DIHEDRAL_IS_PROPER][dihStart + dihIdx]) {
+      // If the torsion is improper, we should exclude any bonds with atom3 or atom4
+      if (b1 == atom3 || b2 == atom3 || b1 == atom4 || b2 == atom4) {
+        continue;
+      }
+    } else if ((b1 == atom3 && b2 == atom4) || (b2 == atom3 && b1 == atom4)) {
       continue;
-    int a1 = (int)sb->bondData[BOND_A1_IDX][i] - startIdx;
-    int a2 = (int)sb->bondData[BOND_A2_IDX][i] - startIdx;
-    unionAtoms(a1, a2);
+    }
+
+    unionAtoms(b1, b2);
   }
-  int group1 = find(end1 - startIdx);
-  int group2 = find(end2 - startIdx);
+  int group1 = find(atom1 - startIdx);
+  int group2 = find(atom2 - startIdx);
   if (group1 == group2) {
-    // std::cerr << "ERROR: TWISTING BOND IN A RING!" << std::endl;
+    // std::cerr << "ERROR: TWISTING DIHEDRAL IN A RING!" << std::endl;
     return;
   }
 
@@ -347,8 +360,8 @@ void SimCalcs::twistBond(int molIdx, int bondIdx, Real twistDeg) {
   Real mvector[NUM_DIMENSIONS];
   // Calculate the bond axis
   for (int i = 0; i < NUM_DIMENSIONS; i++) {
-    bondAxis[i] = aCoords[i * numAtoms + end2] - aCoords[i * numAtoms + end1];
-    mvector[i] = aCoords[i * numAtoms + end1];
+    bondAxis[i] = aCoords[i * numAtoms + atom4] - aCoords[i * numAtoms + atom3];
+    mvector[i] = aCoords[i * numAtoms + atom3];
   }
 
   Real bondAxisLen = 0.0;
@@ -366,12 +379,21 @@ void SimCalcs::twistBond(int molIdx, int bondIdx, Real twistDeg) {
     Real point[NUM_DIMENSIONS];
     Real dot = 0.0;
     Real cross[NUM_DIMENSIONS];
-    if (find(i - startIdx) == group1) {
-      theta = twistDeg * -DEG2RAD/2;
-    } else if (find(i - startIdx) == group2) {
-      theta = twistDeg * DEG2RAD/2;
+    if (sb->dihedralData[DIHEDRAL_IS_PROPER][dihStart + dihIdx]) {
+      if (find(i - startIdx) == group1) {
+        theta = twistDeg * -DEG2RAD/2;
+      } else if (find(i - startIdx) == group2) {
+        theta = twistDeg * DEG2RAD/2;
+      } else {
+        continue;
+      }
     } else {
-      continue;
+      // If the torsion is improper, we only twist the atoms in group1
+      if (find(i - startIdx) == group1) {
+        theta = twistDeg * -DEG2RAD;
+      } else {
+        continue;
+      }
     }
 
     for (int j = 0; j < NUM_DIMENSIONS; j++) {

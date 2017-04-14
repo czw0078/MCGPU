@@ -165,14 +165,14 @@ namespace SimCalcs {
   Real torsionEnergy(int molIdx);
 
   /**
-   * Twists the given bond in the given molecule
+   * Twists the given dihedral in the given molecule
    *
    * @param molIdx The index of the molecule that the dihedral is in.
-   * @param bondIdx The index of the dihedral within the molecule. For example, the
+   * @param dihIdx The index of the dihedral within the molecule. For example, the
    *     first dihedral in molecule 12 has index 0.
-   * @param twistDeg The amount to twist the angle. TODO more details here
+   * @param twistDeg The amount to twist the dihedral. TODO more details here
    */
-  void twistBond(int molIdx, int bondIdx, Real twistDeg);
+  void alterDihedral(int molIdx, int dihIdx, Real twistDeg);
 
   /**
    * Calculates the current (Unsigned) value of the given dihedral
