@@ -135,7 +135,6 @@ void Simulation::run() {
     }
   }
 
-  GPUCopy::copyIn(sb);
   SimulationStep *simStep;
   if (args.strategy == Strategy::BruteForce) {
     log.verbose("Using brute force strategy for energy calculations");
@@ -151,6 +150,7 @@ void Simulation::run() {
                 "brute force");
     simStep = new BruteForceStep(sb);
   }
+  GPUCopy::copyIn(sb);
 
   //Calculate original starting energy for the entire system
   if (oldEnergy == 0) {

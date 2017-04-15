@@ -13,10 +13,8 @@
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 
-
 class VerletStep: public SimulationStep {
     private:
-        // Used to avoid having to copy numMolecules from the GPU
         int NUM_MOLS;
         int VERLET_SIZE;
         int VACOORDS_SIZE;
@@ -26,9 +24,7 @@ class VerletStep: public SimulationStep {
         thrust::device_vector<Real> d_verletAtomCoords;
 
         void checkOutsideSkinLayer(int molIdx);
-        void resizeThrustVectors();
         void freeMemory();
-        void CreateVerletList();
 
     public:
         explicit VerletStep(SimBox* box): SimulationStep(box),
@@ -38,8 +34,8 @@ class VerletStep: public SimulationStep {
                                     d_verletAtomCoords(0) {
 
             NUM_MOLS = box->numMolecules;
-            VERLET_SIZE = pow(NUM_MOLS, 2);
-            VACOORDS_SIZE = NUM_DIMENSIONS * NUM_MOLS;
+            VERLET_SIZE = NUM_MOLS * NUM_MOLS;
+            VACOORDS_SIZE = NUM_DIMENSIONS * box->numAtoms;
         }
 
         virtual ~VerletStep();
@@ -79,41 +75,56 @@ namespace VerletCalcs {
      * @return The total energy of the box (discounts initial lj / charge energy)
      */
     template <typename T>
-    struct EnergyContribution {
-        T currMol;
-        T startMol;
-        SimBox* sb;
-        EnergyContribution( const T& _currMol, const T& _startMol, SimBox* _sb ) {
-            currMol = _currMol;
-            startMol = _startMol;
-            sb = _sb;
-        }
-
+    struct calcMolecularEnergyContribution {
         __host__ __device__
-            Real operator()( const T neighborIndex ) const;
-    };
-
-    template <typename T>
-    struct UpdateVerletList {
-        __host__ __device__
-        void operator()( const T i, const Real* vaCoords, SimBox* sb) const;
+        void operator()(int currMol, int startMol, SimBox* sb, int* verletList, int verletListLength) const;
     };
 
     __global__
-    void updateKernel(const int i, const Real* vaCoords, SimBox* sb) {
-        VerletCalcs::UpdateVerletList<int>()(i, vaCoords, sb);
-    }
+    void energyContribution_Kernel(int currMol, int startMol, SimBox* sb, int* verletList, int verletListLength);
 
+
+    /*
+     * @param verletList
+     * @param verletAtomCoords
+     * @param verletListLength
+     * @param sb
+     */
+
+    /**
+     * Checks if the verlet list needs to be updated to account for 
+     * changes to molecule positions
+     *
+     * @return True/False if an update needs to take place
+     */
+    template <typename T>
+    struct UpdateVerletList {
+        __host__ __device__
+        void operator()( const T i, const Real* vaCoords, SimBox* sb );
+    };
+
+    __global__
+    void updateVerlet_Kernel( int i, Real* vaCoords, SimBox* sb );
+
+    /**
+     * Creates a new verlet list
+     * @param sb
+     * @param verletList
+     * @param verletListLength
+     * @param verletAtomCoords
+     * @param vaCoordsLength
+     */
     template <typename T>
     struct NewVerletList {
-        SimBox* sb;
-        NewVerletList( SimBox* _sb ) : sb(_sb) {}
-
-        __host__ __device__
-        T* operator()();
-        T* operator()(SimBox* sb);
+    __host__ __device__
+    void operator()(T* verletList, Real* verletAtomCoords,
+                        const int verletListLength, const int vaCoordsLength,
+                        SimBox* sb);
     };
-        
+
+    __global__
+    void NewVerletList_Kernel(int* verletList, Real* verletAtomCoords, int verletListLength, int vaCoordsLength, SimBox* sb);
+
      /**
       * Determines whether or not two molecule's primaryIndexes are
       * within the cutoff range of one another and calculates the 
@@ -126,37 +137,5 @@ namespace VerletCalcs {
       */
     __host__ __device__
     Real calcMoleculeInteractionEnergy (int m1, int m2, SimBox* sb);
-
-    /**
-     *
-     */
-    __global__
-    void createVerlet(int* verletList, Real* verletAtomCoords, int verletListLength, int vaCoordsLength, SimBox* sb);
-    
-    
-    /**
-     * Checks if the verlet list needs to be updated to account for 
-     * changes to molecule positions
-     *
-     * @return True/False if an update needs to take place
-     */
-    //__host__ __device__
-    //void updateVerlet(Real* vaCoords, SimBox* sb, int i);
-
-    /**
-     * CUDA kernel to call VerletCalcs::updateVerlet on the GPU
-     */
-    //__global__
-    //void updateVerlet_Kernel(Real* vaCoords, SimBox* sb, int i);
-
-
-    /**
-     * Creates a new verlet list for CPU run
-     *
-     * @return An int* representing a verlet list
-     */
-    __host__ __device__
-    int* newVerletList(SimBox* sb, int verletListLength);
 }
-
 #endif
