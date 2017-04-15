@@ -13,8 +13,11 @@
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 
+
 class VerletStep: public SimulationStep {
     private:
+        // Used to avoid having to copy numMolecules from the GPU
+        int NUM_MOLS;
         int VERLET_SIZE;
         int VACOORDS_SIZE;
         thrust::host_vector<int> h_verletList;
@@ -24,6 +27,8 @@ class VerletStep: public SimulationStep {
 
         void checkOutsideSkinLayer(int molIdx);
         void resizeThrustVectors();
+        void freeMemory();
+        void CreateVerletList();
 
     public:
         explicit VerletStep(SimBox* box): SimulationStep(box),
@@ -32,8 +37,9 @@ class VerletStep: public SimulationStep {
                                     d_verletList(0),
                                     d_verletAtomCoords(0) {
 
-            VERLET_SIZE = box->numMolecules * box->numMolecules;
-            VACOORDS_SIZE = NUM_DIMENSIONS * box->numAtoms;
+            NUM_MOLS = box->numMolecules;
+            VERLET_SIZE = pow(NUM_MOLS, 2);
+            VACOORDS_SIZE = NUM_DIMENSIONS * NUM_MOLS;
         }
 
         virtual ~VerletStep();
@@ -72,11 +78,42 @@ namespace VerletCalcs {
      *                      the indexes of molecules in range for each molecule 
      * @return The total energy of the box (discounts initial lj / charge energy)
      */
-    __host__ __device__
-    void calcMolecularEnergyContribution(int currMol, int startMol, SimBox* sb, int* verletList, int verletListLength);
+    template <typename T>
+    struct EnergyContribution {
+        T currMol;
+        T startMol;
+        SimBox* sb;
+        EnergyContribution( const T& _currMol, const T& _startMol, SimBox* _sb ) {
+            currMol = _currMol;
+            startMol = _startMol;
+            sb = _sb;
+        }
 
-    __global__ 
-    void energyContribution_Kernel(int currMol, int startMol, SimBox* sb, int* verletList, int verletListLength);
+        __host__ __device__
+            Real operator()( const T neighborIndex ) const;
+    };
+
+    template <typename T>
+    struct UpdateVerletList {
+        __host__ __device__
+        void operator()( const T i, const Real* vaCoords, SimBox* sb) const;
+    };
+
+    __global__
+    void updateKernel(const int i, const Real* vaCoords, SimBox* sb) {
+        VerletCalcs::UpdateVerletList<int>()(i, vaCoords, sb);
+    }
+
+    template <typename T>
+    struct NewVerletList {
+        SimBox* sb;
+        NewVerletList( SimBox* _sb ) : sb(_sb) {}
+
+        __host__ __device__
+        T* operator()();
+        T* operator()(SimBox* sb);
+    };
+        
      /**
       * Determines whether or not two molecule's primaryIndexes are
       * within the cutoff range of one another and calculates the 
@@ -93,14 +130,9 @@ namespace VerletCalcs {
     /**
      *
      */
-    __host__ __device__
+    __global__
     void createVerlet(int* verletList, Real* verletAtomCoords, int verletListLength, int vaCoordsLength, SimBox* sb);
     
-    /*
-     *
-     */
-    __global__
-    void createVerlet_Kernel(int* verletList, Real* verletAtomCoords, int verletListLength, int vaCoordsLength, SimBox* sb);
     
     /**
      * Checks if the verlet list needs to be updated to account for 
@@ -108,20 +140,15 @@ namespace VerletCalcs {
      *
      * @return True/False if an update needs to take place
      */
-    __host__ __device__
-    void updateVerlet(Real* vaCoords, SimBox* sb, int i);
+    //__host__ __device__
+    //void updateVerlet(Real* vaCoords, SimBox* sb, int i);
 
     /**
      * CUDA kernel to call VerletCalcs::updateVerlet on the GPU
      */
-    __global__
-    void updateVerlet_Kernel(Real* vaCoords, SimBox* sb, int i);
+    //__global__
+    //void updateVerlet_Kernel(Real* vaCoords, SimBox* sb, int i);
 
-    /**
-     * Frees memory used by verlet lists and coordinate lists
-     */
-    void freeMemory(thrust::host_vector<int> &h_verletList, thrust::host_vector<Real> &h_vaCoords);
-    void freeMemory(thrust::device_vector<int> &d_verletList, thrust::device_vector<Real> &d_vaCoords);
 
     /**
      * Creates a new verlet list for CPU run
