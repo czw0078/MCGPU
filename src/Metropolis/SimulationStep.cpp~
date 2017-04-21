@@ -298,7 +298,7 @@ void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
 		}
 
 		angleSizes[angleStart + angleIdx] += expandDeg;
-		cudaMemcpy(sb->angleSizes, &angleSizes, sizeof(Real) * sb->numAngles,
+		cudaMemcpy(&sb->angleSizes, angleSizes, sizeof(Real) * sb->numAngles,
 				cudaMemcpyDeviceToHost);
 	} else	{
 		moleculeData = sb->moleculeData;

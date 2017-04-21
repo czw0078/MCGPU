@@ -49,10 +49,6 @@ SimBox* GPUCopy::simBoxCPU() {
   return h_sb;
 }
 
-Real* GPUCopy::atomCoordinatesPtr()	{
-	return d_atomCoordinates;
-}
-
 Real* GPUCopy::moleculeDataPtr()	{
 	return d_moleculeData;
 }

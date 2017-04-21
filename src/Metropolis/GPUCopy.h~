@@ -15,8 +15,6 @@ namespace GPUCopy {
   SimBox* simBoxGPU();
   SimBox* simBoxCPU();
 
-	Real* atomCoordinatesPtr();
-
 	Real* moleculeDataPtr();
 
 	Real** angleDataPtr();
