@@ -144,7 +144,8 @@ namespace SimCalcs {
 	/**
 	 * GPU Calculation for bondEnergy below.
 	 */
-	void calcBondEnergy(bondData, bondLengths, d_out, bondStart, bondEnd);
+	void calcBondEnergy(Real** bondData, Real* bondLengths, 
+			Real d_out, int bondStart, int bondEnd);
 
   /**
    * Calculates the energy from various flexible bonds within the molecule.
@@ -408,6 +409,16 @@ namespace SimCalcs {
 
   /** Set the current SimBox instance for this namespace */
   void setSB(SimBox* sb);
+
+	/**
+	 *
+	 */
+	disjointAtomsInMolecule(int molSize);
+
+	/**
+	 *
+	 */
+	unionByBond(int bondStart, int bondEnd);
 }
 
 #endif

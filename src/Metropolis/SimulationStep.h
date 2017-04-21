@@ -409,6 +409,16 @@ namespace SimCalcs {
 
   /** Set the current SimBox instance for this namespace */
   void setSB(SimBox* sb);
+
+	/**
+	 * Create a disjoint set of the atoms in the molecule
+	 */
+	disjointAtomsInMolecule(int molSize);
+
+	/**
+	 * Union atoms connected by a bond
+	 */
+	unionByBond(int bondStart, int bondEnd);
 }
 
 #endif
