@@ -148,9 +148,11 @@ Real SimCalcs::angleEnergy(int molIdx) {
 	Real* moleculeData = NULL;
 	int numMolecules = 0;
 	Real out = 0;
+	Real* h_out = &out;
 
 	if (on_gpu)	{
-		Real d_out = 0;
+		Real* d_out = NULL;
+		cudaMemcpy(&d_out, &h_out, sizeof(Real), cudaMemcpyHostToDevice); 
 		angleData = GPUCopy::angleDataPtr();
 		angleSizes = GPUCopy::angleSizesPtr();
 		moleculeData = GPUCopy::moleculeDataPtr();
@@ -298,7 +300,7 @@ void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
 		}
 
 		angleSizes[angleStart + angleIdx] += expandDeg;
-		cudaMemcpy(&sb->angleSizes, angleSizes, sizeof(Real) * sb->numAngles,
+		cudaMemcpy(sb->angleSizes, &angleSizes, sizeof(Real) * sb->numAngles,
 				cudaMemcpyDeviceToHost);
 	} else	{
 		moleculeData = sb->moleculeData;
