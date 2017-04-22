@@ -53,7 +53,7 @@ Real* GPUCopy::atomCoordinatesPtr()	{
 	return d_atomCoordinates;
 }
 
-Real* GPUCopy::moleculeDataPtr()	{
+int* GPUCopy::moleculeDataPtr()	{
 	return d_moleculeData;
 }
 

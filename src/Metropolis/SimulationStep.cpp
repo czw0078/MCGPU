@@ -133,38 +133,35 @@ Real SimCalcs::calcIntraMolecularEnergy(int molIdx) {
 __global__
 void SimCalcs::calcAngleEnergy(Real** angleData, Real* angleSizes, 
 		Real out, int angleStart, int angleEnd)	{
-	for (int i = angleStart; i < angleEnd; i++)	{
-		if ((bool)angleData[ANGLE_VARIABLE][i])	{
-			Real diff = angleData[ANGLE_EQANGLE][i] - angleSizes[i];
-			out += angleData[ANGLE_KANGLE][i] * diff * diff;
-		}
-	}
+  for (int i = angleStart; i < angleEnd; i++)	{
+    if ((bool)angleData[ANGLE_VARIABLE][i])	{
+      Real diff = angleData[ANGLE_EQANGLE][i] - angleSizes[i];
+      out += angleData[ANGLE_KANGLE][i] * diff * diff;
+    }
+  }
 }
 
 Real SimCalcs::angleEnergy(int molIdx) {
 	// John Lee
 	Real** angleData = NULL;
 	Real* angleSizes = NULL;
-	Real* moleculeData = NULL;
+	int* moleculeData = NULL;
 	int numMolecules = 0;
 	Real out = 0;
 	Real* h_out = &out;
 
 	if (on_gpu)	{
-		Real* d_out = NULL;
-		cudaMemcpy(&d_out, &h_out, sizeof(Real), cudaMemcpyHostToDevice); 
+		Real* d_out = NULL; 
 		angleData = GPUCopy::angleDataPtr();
 		angleSizes = GPUCopy::angleSizesPtr();
-		moleculeData = GPUCopy::moleculeDataPtr();
+		moleculeData = (int*) GPUCopy::moleculeDataPtr();
 		numMolecules = GPUCopy::simBoxGPU()->numMolecules;
 
 		int angleStart = moleculeData[MOL_ANGLE_START * numMolecules + molIdx];
 		int angleEnd = angleStart + moleculeData[MOL_ANGLE_COUNT * numMolecules + molIdx];
 
 		SimCalcs::calcAngleEnergy<<<1, 1>>>(angleData, angleSizes, 
-				d_out, angleStart, angleEnd);
-		cudaMemcpy(&h_out, &d_out, sizeof(Real), cudaMemcpyDeviceToHost);
-		out = *h_out;
+				out, angleStart, angleEnd);
 	} else	{
 		angleData = sb->angleData;
 		angleSizes = sb->angleSizes;
@@ -185,20 +182,20 @@ Real SimCalcs::angleEnergy(int molIdx) {
 }
 
 __global__
-void SimCalcs::disjointAtomsInMolecule(int molSize)	{
-	for (int i = 0; i < molSize; i++)
-		simBoxGPU()->unionFindParent[i] = i;
+void SimCalcs::disjointAtomsInMolecule(int molSize, SimBox* simBox)	{
+  for (int i = 0; i < molSize; i++)
+    simBox->unionFindParent[i] = i;
 }
 
 __global__
-SimCalcs::unionByBOnd(int bondStart, int bondEnd)	{
-	for (int i = bondStart; i < bondEnd; i++) {
-		int a1 = (int)GPUCopy::simBoxGPU()->bondData[BOND_A1_IDX][i];
-		int a2 = (int)GPUCopy::simBoxGPU()->bondData[BOND_A2_IDX][i];
-		if (a1 == mid || a2 == mid)
-		  continue;
-		unionAtoms(a1 - startIdx, a2 - startIdx);
-	}
+void SimCalcs::unionByBond(int bondStart, int bondEnd, int startIdx, int mid, SimBox* simBox)	{
+  for (int i = bondStart; i < bondEnd; i++) {
+    int a1 = (int)simBox->bondData[BOND_A1_IDX][i];
+    int a2 = (int)simBox->bondData[BOND_A2_IDX][i];
+    if (a1 == mid || a2 == mid)
+      continue;
+    SimCalcs::unionAtomsGPU(a1 - startIdx, a2 - startIdx, simBox);
+  }
 }
 
 void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
@@ -219,9 +216,9 @@ void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
 
 	if (on_gpu)	{
 		moleculeData = GPUCopy::moleculeDataPtr();
-		angleSizes = GPUCopy::moleculeDataPtr();
+		angleSizes = GPUCopy::angleSizesPtr();
 		numMolecules = GPUCopy::simBoxGPU()->numMolecules;
-		angleData = GPUCopyangleDataPtr();
+		angleData = GPUCopy::angleDataPtr();
 		bondStart = moleculeData[MOL_BOND_START * numMolecules + molIdx];
 		bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * numMolecules + molIdx];
 		angleStart = moleculeData[MOL_ANGLE_START * numMolecules + molIdx];
@@ -235,12 +232,12 @@ void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
 
 		// ADD TO SIMCALCS
 		// Create a disjoint set of the atoms in the molecule
-		SimCalcs::disjointAtomsInMolecule<<<1,1>>>(molSize);
+		SimCalcs::disjointAtomsInMolecule<<<1,1>>>(molSize, GPUCopy::simBoxGPU());
 
 
 		// ADD TO SIMCALCS!
 		// Union atoms connected by a bond
-		SimCalcs::unionByBond<<<1,1>>>(bondStart, bondEnd);
+		SimCalcs::unionByBond<<<1,1>>>(bondStart, bondEnd, startIdx, mid, GPUCopy::simBoxGPU());
 
 
 		int group1 = find(end1 - startIdx);
@@ -390,56 +387,56 @@ void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
 		  }
 		}
 
-		angleSizes[angleStart + angleIdx] += expandDeg;
+	angleSizes[angleStart + angleIdx] += expandDeg;
 	}
 }
 
 __global__
 void SimCalcs::calcBondEnergy(Real** bondData, Real* bondLengths, 
 			Real out, int bondStart, int bondEnd)	{
-	for (int i = bondStart; i < bondEnd; i++)	{
-		if ((bool)bondData[BOND_VARIABLE][i])	{
-			Real diff = bondData[BOND_EQDIST][i] - bondLengths[i];
-			out += bondData[BOND_KBOND][i] * diff * diff;
-		}
-	}
+  for (int i = bondStart; i < bondEnd; i++)	{
+    if ((bool)bondData[BOND_VARIABLE][i])	{
+      Real diff = bondData[BOND_EQDIST][i] - bondLengths[i];
+      out += bondData[BOND_KBOND][i] * diff * diff;
+    }
+  }
 }
 
 // John Lee
 Real SimCalcs::bondEnergy(int molIdx) {
   Real out = 0;
-	Real** bondData = NULL;
-	Real* bonddLengths = NULL;
-	Real* moleculeData = NULL;
+  Real** bondData = NULL;
+  Real* bondLengths = NULL;
+  int* moleculeData = NULL;
 
-	if (on_gpu)	{
-		cudaMemcpy(&d_bondData, bondData, sizeof(Real) * , cudaMemcpyHostToDevice);
-		bondData = GPUCopy::bondDataPtr();
-		bondLengths = GPUCopy::bondLengthsPtr();
-		moleculeData = GPUCopy::moleculeDataPtr();
-		int numMolecules = GPUCopy::simBoxGPU()->numMolecules;
-		int bondStart = moleculeData[MOL_BOND_START * numMolecules + molIdx];
-		int bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * numMolecules + molIdx];
-		Real d_out = 0;
-		cudaMemcpy(d_out, out, sizeof(Real), cudaMemcpyHostToDevice);
-		SimCalcs::calcBondEnergy<<<1, 1>>>(bondData, bondLengths,
+ if (on_gpu)	{
+    Real** d_bondData = NULL;
+    cudaMemcpy(&d_bondData, sb->bondData, sizeof(Real) * sb->numBonds * BOND_DATA_SIZE, cudaMemcpyHostToDevice);
+    bondData = GPUCopy::bondDataPtr();
+    bondLengths = GPUCopy::bondLengthsPtr();
+    moleculeData = (int *)GPUCopy::moleculeDataPtr();
+    int numMolecules = GPUCopy::simBoxGPU()->numMolecules;
+    int bondStart = moleculeData[MOL_BOND_START * numMolecules + molIdx];
+    int bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * numMolecules + molIdx];
+    Real d_out = 0;
+    SimCalcs::calcBondEnergy<<<1, 1>>>(bondData, bondLengths,
 				d_out, bondStart, bondEnd);
-		cudaMemcpy(out, d_out, sizeof(Real), cudaMemcpyDeviceToHost);
-	} else	{
-		bondData = sb->bondData;
-		bondLengths = sb->bondLengths;
-		moleculeData = sb->moleculeData;
-		int numMolecules = sb->numMolecues;
-		int bondStart = moleculeData[MOL_BOND_START * numMolecules + molIdx];
-		int bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * numMolecules + molIdx];
+    out = d_out;
+  } else	{
+    bondData = sb->bondData;
+    bondLengths = sb->bondLengths;
+    moleculeData = sb->moleculeData;
+    int numMolecules = sb->numMolecules;
+    int bondStart = moleculeData[MOL_BOND_START * numMolecules + molIdx];
+    int bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * numMolecules + molIdx];
 
-		for (int i = bondStart; i < bondEnd; i++)	{
-			if ((bool)bondData[BOND_VARIABLE][i])	{
-				Real diff = bondData[BOND_EQDIST][i] - bondLengths[i];
-				out += bondData[BOND_KBOND][i] * diff * diff;
-			}
-		}
-	}
+    for (int i = bondStart; i < bondEnd; i++)	{
+      if ((bool)bondData[BOND_VARIABLE][i])	{
+        Real diff = bondData[BOND_EQDIST][i] - bondLengths[i];
+        out += bondData[BOND_KBOND][i] * diff * diff;
+      }
+    }
+  }
 
   return out;
 }
@@ -966,6 +963,17 @@ void SimCalcs::unionAtoms(int atom1, int atom2) {
   }
 }
 
+__device__
+void SimCalcs::unionAtomsGPU(int atom1, int atom2, SimBox* simBox)	{
+  int a1Parent;
+  int a2Parent;
+  findGPU(atom1, simBox, a1Parent);
+  findGPU(atom2, simBox, a2Parent);
+  if (a1Parent != a2Parent)	{
+    simBox->unionFindParent[a1Parent] = a2Parent;
+  }
+}
+
 int SimCalcs::find(int atomIdx) {
   if (sb->unionFindParent[atomIdx] == atomIdx) {
     return atomIdx;
@@ -973,6 +981,13 @@ int SimCalcs::find(int atomIdx) {
     sb->unionFindParent[atomIdx] = find(sb->unionFindParent[atomIdx]);
     return sb->unionFindParent[atomIdx];
   }
+}
+
+__device__
+void SimCalcs::findGPU(int atomIdx, SimBox* simBox, int retVal)	{
+  while(simBox->unionFindParent[atomIdx] != atomIdx)
+    atomIdx = simBox->unionFindParent[atomIdx];
+  retVal = atomIdx;
 }
 
 bool SimCalcs::acceptMove(Real oldEnergy, Real newEnergy) {

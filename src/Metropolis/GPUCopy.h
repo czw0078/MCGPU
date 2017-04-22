@@ -5,7 +5,7 @@
 
 namespace GPUCopy {
 
-	void GPUCopy::setParallel(bool in);
+  void setParallel(bool);
   bool onGpu();
   void setParallel(bool launchOnGpu);
 
@@ -15,18 +15,16 @@ namespace GPUCopy {
   SimBox* simBoxGPU();
   SimBox* simBoxCPU();
 
-	Real* atomCoordinatesPtr();
+  Real* atomCoordinatesPtr();
+  int* moleculeDataPtr();
 
-	Real* moleculeDataPtr();
+  Real** angleDataPtr();
+  Real* angleSizesPtr();
+  Real* rollBackAngleSizesPtr();
 
-	Real** angleDataPtr();
-	Real* angleSizesPtr();
-	Real* rollBackAngleSizesPtr();
-
-	Real** bondDataPtr();
-	Real* bondLengthsPtr();
-	Real* rollBackBondLengthsPtr();
+  Real** bondDataPtr();
+  Real* bondLengthsPtr();
+  Real* rollBackBondLengthsPtr();
 }
-
 
 #endif
