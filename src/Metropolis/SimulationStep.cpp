@@ -148,13 +148,11 @@ Real SimCalcs::angleEnergy(int molIdx) {
 	int* moleculeData = NULL;
 	int numMolecules = 0;
 	Real out = 0;
-	Real* h_out = &out;
 
-	if (on_gpu)	{
-		Real* d_out = NULL; 
-		angleData = GPUCopy::angleDataPtr();
-		angleSizes = GPUCopy::angleSizesPtr();
-		moleculeData = (int*) GPUCopy::moleculeDataPtr();
+	if (on_gpu)	{ 
+		cudaMemcpy(&angleData, &(sb->angleData), sb->numAngles * sizeof(Real) * ANGLE_DATA_SIZE, cudaMemcpyHostToDevice);
+		cudaMemcpy(&angleSizes, &(sb->angleSizes), sb->numAngles * sizeof(Real), cudaMemcpyHostToDevice);
+		cudaMemcpy(&moleculeData, &(sb->moleculeData), MOL_DATA_SIZE * sizeof(int) * sb->numMolecules, cudaMemcpyHostToDevice);
 		numMolecules = GPUCopy::simBoxGPU()->numMolecules;
 
 		int angleStart = moleculeData[MOL_ANGLE_START * numMolecules + molIdx];
@@ -215,10 +213,10 @@ void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
 	int numAtoms = 0;
 
 	if (on_gpu)	{
-		moleculeData = GPUCopy::moleculeDataPtr();
-		angleSizes = GPUCopy::angleSizesPtr();
+		cudaMemcpy(&moleculeData, &(sb->moleculeData), MOL_DATA_SIZE * sizeof(int) * sb->numMolecules, cudaMemcpyHostToDevice);
+		cudaMemcpy(&angleSizes, &(sb->angleSizes), sb->numAngles * sizeof(Real), cudaMemcpyHostToDevice);
 		numMolecules = GPUCopy::simBoxGPU()->numMolecules;
-		angleData = GPUCopy::angleDataPtr();
+		cudaMemcpy(&angleData, &(sb->angleData), sb->numAngles * sizeof(Real) * ANGLE_DATA_SIZE, cudaMemcpyHostToDevice);
 		bondStart = moleculeData[MOL_BOND_START * numMolecules + molIdx];
 		bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * numMolecules + molIdx];
 		angleStart = moleculeData[MOL_ANGLE_START * numMolecules + molIdx];
@@ -227,7 +225,7 @@ void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
 		end1 = (int)angleData[ANGLE_A1_IDX][angleStart + angleIdx];
 		end2 = (int)angleData[ANGLE_A2_IDX][angleStart + angleIdx];
 		mid = (int)angleData[ANGLE_MID_IDX][angleStart + angleIdx];
-		aCoords = GPUCopy::atomCoordinatesPtr();
+		cudaMemcpy(&aCoords, &(sb->atomCoordinates), NUM_DIMENSIONS * sizeof(Real) * sb->numAtoms, cudaMemcpyHostToDevice);
 		numAtoms = GPUCopy::simBoxGPU()->numAtoms;
 
 		// ADD TO SIMCALCS
@@ -410,18 +408,14 @@ Real SimCalcs::bondEnergy(int molIdx) {
   int* moleculeData = NULL;
 
  if (on_gpu)	{
-    Real** d_bondData = NULL;
-    cudaMemcpy(&d_bondData, sb->bondData, sizeof(Real) * sb->numBonds * BOND_DATA_SIZE, cudaMemcpyHostToDevice);
-    bondData = GPUCopy::bondDataPtr();
-    bondLengths = GPUCopy::bondLengthsPtr();
-    moleculeData = (int *)GPUCopy::moleculeDataPtr();
+    cudaMemcpy(&bondData, &(sb->bondData), sizeof(Real) * sb->numBonds * BOND_DATA_SIZE, cudaMemcpyHostToDevice);
+    cudaMemcpy(&bondLengths, &(sb->bondLengths), sb->numBonds * sizeof(Real), cudaMemcpyHostToDevice);
+    cudaMemcpy(&moleculeData, &(sb->moleculeData), MOL_DATA_SIZE * sizeof(int) * sb->numMolecules, cudaMemcpyHostToDevice);
     int numMolecules = GPUCopy::simBoxGPU()->numMolecules;
     int bondStart = moleculeData[MOL_BOND_START * numMolecules + molIdx];
     int bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * numMolecules + molIdx];
-    Real d_out = 0;
     SimCalcs::calcBondEnergy<<<1, 1>>>(bondData, bondLengths,
-				d_out, bondStart, bondEnd);
-    out = d_out;
+				out, bondStart, bondEnd);
   } else	{
     bondData = sb->bondData;
     bondLengths = sb->bondLengths;
