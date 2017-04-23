@@ -132,9 +132,9 @@ Real SimCalcs::calcIntraMolecularEnergy(int molIdx) {
 
 __global__
 void SimCalcs::calcAngleEnergy(Real** angleData, Real* angleSizes, 
-		Real out, int angleStart, int angleEnd)	{
-  for (int i = angleStart; i < angleEnd; i++)	{
-    if ((bool)angleData[ANGLE_VARIABLE][i])	{
+    Real out, int angleStart, int angleEnd)  {
+  for (int i = angleStart; i < angleEnd; i++)  {
+    if ((bool)angleData[ANGLE_VARIABLE][i])  {
       Real diff = angleData[ANGLE_EQANGLE][i] - angleSizes[i];
       out += angleData[ANGLE_KANGLE][i] * diff * diff;
     }
@@ -142,51 +142,51 @@ void SimCalcs::calcAngleEnergy(Real** angleData, Real* angleSizes,
 }
 
 Real SimCalcs::angleEnergy(int molIdx) {
-	// John Lee
-	Real** angleData = NULL;
-	Real* angleSizes = NULL;
-	int* moleculeData = NULL;
-	int numMolecules = 0;
-	Real out = 0;
+  // John Lee
+  Real** angleData = NULL;
+  Real* angleSizes = NULL;
+  int* moleculeData = NULL;
+  int numMolecules = 0;
+  Real out = 0;
 
-	if (on_gpu)	{ 
-		cudaMemcpy(&angleData, &(sb->angleData), sb->numAngles * sizeof(Real) * ANGLE_DATA_SIZE, cudaMemcpyHostToDevice);
-		cudaMemcpy(&angleSizes, &(sb->angleSizes), sb->numAngles * sizeof(Real), cudaMemcpyHostToDevice);
-		cudaMemcpy(&moleculeData, &(sb->moleculeData), MOL_DATA_SIZE * sizeof(int) * sb->numMolecules, cudaMemcpyHostToDevice);
-		numMolecules = GPUCopy::simBoxGPU()->numMolecules;
+  if (on_gpu)  { 
+    cudaMemcpy(&angleData, &(sb->angleData), sb->numAngles * sizeof(Real) * ANGLE_DATA_SIZE, cudaMemcpyHostToDevice);
+    cudaMemcpy(&angleSizes, &(sb->angleSizes), sb->numAngles * sizeof(Real), cudaMemcpyHostToDevice);
+    cudaMemcpy(&moleculeData, &(sb->moleculeData), MOL_DATA_SIZE * sizeof(int) * sb->numMolecules, cudaMemcpyHostToDevice);
+    numMolecules = GPUCopy::simBoxGPU()->numMolecules;
 
-		int angleStart = moleculeData[MOL_ANGLE_START * numMolecules + molIdx];
-		int angleEnd = angleStart + moleculeData[MOL_ANGLE_COUNT * numMolecules + molIdx];
+    int angleStart = moleculeData[MOL_ANGLE_START * numMolecules + molIdx];
+    int angleEnd = angleStart + moleculeData[MOL_ANGLE_COUNT * numMolecules + molIdx];
 
-		SimCalcs::calcAngleEnergy<<<1, 1>>>(angleData, angleSizes, 
-				out, angleStart, angleEnd);
-	} else	{
-		angleData = sb->angleData;
-		angleSizes = sb->angleSizes;
-		moleculeData = sb->moleculeData;
-		numMolecules = sb->numMolecules;
+    SimCalcs::calcAngleEnergy<<<1, 1>>>(angleData, angleSizes, 
+        out, angleStart, angleEnd);
+  } else  {
+    angleData = sb->angleData;
+    angleSizes = sb->angleSizes;
+    moleculeData = sb->moleculeData;
+    numMolecules = sb->numMolecules;
 
-		int angleStart = moleculeData[MOL_ANGLE_START * numMolecules + molIdx];
-		int angleEnd = angleStart + moleculeData[MOL_ANGLE_COUNT * numMolecules + molIdx];
+    int angleStart = moleculeData[MOL_ANGLE_START * numMolecules + molIdx];
+    int angleEnd = angleStart + moleculeData[MOL_ANGLE_COUNT * numMolecules + molIdx];
 
-		for (int i = angleStart; i < angleEnd; i++)	{
-			if ((bool)angleData[ANGLE_VARIABLE][i])	{
-				Real diff = angleData[ANGLE_EQANGLE][i] - angleSizes[i];
-				out += angleData[ANGLE_KANGLE][i] * diff * diff;
-			}
-		}		
-	}
+    for (int i = angleStart; i < angleEnd; i++)  {
+      if ((bool)angleData[ANGLE_VARIABLE][i])  {
+        Real diff = angleData[ANGLE_EQANGLE][i] - angleSizes[i];
+        out += angleData[ANGLE_KANGLE][i] * diff * diff;
+      }
+    }    
+  }
   return out;
 }
 
 __global__
-void SimCalcs::disjointAtomsInMolecule(int molSize, SimBox* simBox)	{
+void SimCalcs::disjointAtomsInMolecule(int molSize, SimBox* simBox)  {
   for (int i = 0; i < molSize; i++)
     simBox->unionFindParent[i] = i;
 }
 
 __global__
-void SimCalcs::unionByBond(int bondStart, int bondEnd, int startIdx, int mid, SimBox* simBox)	{
+void SimCalcs::unionByBond(int bondStart, int bondEnd, int startIdx, int mid, SimBox* simBox)  {
   for (int i = bondStart; i < bondEnd; i++) {
     int a1 = (int)simBox->bondData[BOND_A1_IDX][i];
     int a2 = (int)simBox->bondData[BOND_A2_IDX][i];
@@ -197,203 +197,203 @@ void SimCalcs::unionByBond(int bondStart, int bondEnd, int startIdx, int mid, Si
 }
 
 void SimCalcs::expandAngle(int molIdx, int angleIdx, Real expandDeg) {
-	int* moleculeData = NULL;
-	Real* angleSizes = NULL;
-	int numMolecules = 0;
-	Real** angleData = NULL;
-	int bondStart = 0;
-	int bondEnd = 0;
-	int angleStart= 0;
-	int startIdx = 0;
-	int molSize = 0;
-	int end1 = 0;
-	int end2 = 0;
-	int mid = 0;
-	Real* aCoords = NULL;
-	int numAtoms = 0;
+  int* moleculeData = NULL;
+  Real* angleSizes = NULL;
+  int numMolecules = 0;
+  Real** angleData = NULL;
+  int bondStart = 0;
+  int bondEnd = 0;
+  int angleStart= 0;
+  int startIdx = 0;
+  int molSize = 0;
+  int end1 = 0;
+  int end2 = 0;
+  int mid = 0;
+  Real* aCoords = NULL;
+  int numAtoms = 0;
 
-	if (on_gpu)	{
-		cudaMemcpy(&moleculeData, &(sb->moleculeData), MOL_DATA_SIZE * sizeof(int) * sb->numMolecules, cudaMemcpyHostToDevice);
-		cudaMemcpy(&angleSizes, &(sb->angleSizes), sb->numAngles * sizeof(Real), cudaMemcpyHostToDevice);
-		numMolecules = GPUCopy::simBoxGPU()->numMolecules;
-		cudaMemcpy(&angleData, &(sb->angleData), sb->numAngles * sizeof(Real) * ANGLE_DATA_SIZE, cudaMemcpyHostToDevice);
-		bondStart = moleculeData[MOL_BOND_START * numMolecules + molIdx];
-		bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * numMolecules + molIdx];
-		angleStart = moleculeData[MOL_ANGLE_START * numMolecules + molIdx];
-		startIdx = moleculeData[MOL_START * numMolecules + molIdx];
-		molSize = moleculeData[MOL_LEN * numMolecules + molIdx];
-		end1 = (int)angleData[ANGLE_A1_IDX][angleStart + angleIdx];
-		end2 = (int)angleData[ANGLE_A2_IDX][angleStart + angleIdx];
-		mid = (int)angleData[ANGLE_MID_IDX][angleStart + angleIdx];
-		cudaMemcpy(&aCoords, &(sb->atomCoordinates), NUM_DIMENSIONS * sizeof(Real) * sb->numAtoms, cudaMemcpyHostToDevice);
-		numAtoms = GPUCopy::simBoxGPU()->numAtoms;
+  if (on_gpu)  {
+    cudaMemcpy(&moleculeData, &(sb->moleculeData), MOL_DATA_SIZE * sizeof(int) * sb->numMolecules, cudaMemcpyHostToDevice);
+    cudaMemcpy(&angleSizes, &(sb->angleSizes), sb->numAngles * sizeof(Real), cudaMemcpyHostToDevice);
+    numMolecules = GPUCopy::simBoxGPU()->numMolecules;
+    cudaMemcpy(&angleData, &(sb->angleData), sb->numAngles * sizeof(Real) * ANGLE_DATA_SIZE, cudaMemcpyHostToDevice);
+    bondStart = moleculeData[MOL_BOND_START * numMolecules + molIdx];
+    bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * numMolecules + molIdx];
+    angleStart = moleculeData[MOL_ANGLE_START * numMolecules + molIdx];
+    startIdx = moleculeData[MOL_START * numMolecules + molIdx];
+    molSize = moleculeData[MOL_LEN * numMolecules + molIdx];
+    end1 = (int)angleData[ANGLE_A1_IDX][angleStart + angleIdx];
+    end2 = (int)angleData[ANGLE_A2_IDX][angleStart + angleIdx];
+    mid = (int)angleData[ANGLE_MID_IDX][angleStart + angleIdx];
+    cudaMemcpy(&aCoords, &(sb->atomCoordinates), NUM_DIMENSIONS * sizeof(Real) * sb->numAtoms, cudaMemcpyHostToDevice);
+    numAtoms = GPUCopy::simBoxGPU()->numAtoms;
 
-		// ADD TO SIMCALCS
-		// Create a disjoint set of the atoms in the molecule
-		SimCalcs::disjointAtomsInMolecule<<<1,1>>>(molSize, GPUCopy::simBoxGPU());
-
-
-		// ADD TO SIMCALCS!
-		// Union atoms connected by a bond
-		SimCalcs::unionByBond<<<1,1>>>(bondStart, bondEnd, startIdx, mid, GPUCopy::simBoxGPU());
+    // ADD TO SIMCALCS
+    // Create a disjoint set of the atoms in the molecule
+    SimCalcs::disjointAtomsInMolecule<<<1,1>>>(molSize, GPUCopy::simBoxGPU());
 
 
-		int group1 = find(end1 - startIdx);
-		int group2 = find(end2 - startIdx);
-		if (group1 == group2) {
-		  // std::cout << "ERROR: EXPANDING ANGLE IN A RING!" << std::endl;
-		  return;
-		}
-		Real DEG2RAD = 3.14159256358979323846264 / 180.0;
-		Real end1Mid[NUM_DIMENSIONS];
-		Real end2Mid[NUM_DIMENSIONS];
-		Real normal[NUM_DIMENSIONS];
-		Real mvector[NUM_DIMENSIONS];
-		for (int i = 0; i < NUM_DIMENSIONS; i++) {
-		  end1Mid[i] = aCoords[i * numAtoms + mid] - aCoords[i * numAtoms + end1];
-		  end2Mid[i] = aCoords[i * numAtoms + mid] - aCoords[i * numAtoms + end2];
-		  mvector[i] = aCoords[i * numAtoms + mid];
-		}
-		normal[0] = end1Mid[1] * end2Mid[2] - end2Mid[1] * end1Mid[2];
-		normal[1] = end2Mid[0] * end1Mid[2] - end1Mid[0] * end2Mid[2];
-		normal[2] = end1Mid[0] * end2Mid[1] - end2Mid[0] * end1Mid[1];
-		Real normLen = 0.0;
-		for (int i = 0; i < NUM_DIMENSIONS; i++) {
-		  normLen += normal[i] * normal[i];
-		}
-		normLen = sqrt(normLen);
-		for (int i = 0; i < NUM_DIMENSIONS; i++) {
-		  normal[i] = normal[i] / normLen;
-		}
-
-		for (int i = startIdx; i < startIdx + molSize; i++) {
-		  Real theta;
-		  Real point[NUM_DIMENSIONS];
-		  Real dot = 0.0;
-		  Real cross[NUM_DIMENSIONS];
-		  if (find(i - startIdx) == group1) {
-		    theta = expandDeg * -DEG2RAD;
-		  } else if (find(i - startIdx) == group2) {
-		    theta = expandDeg * DEG2RAD;
-		  } else {
-		    continue;
-		  }
-
-		  for (int j = 0; j < NUM_DIMENSIONS; j++) {
-		    point[j] = aCoords[j * numAtoms + i] - mvector[j];
-		    dot += point[j] * normal[j];
-		  }
-
-		  cross[0] = normal[1] * point[2] - point[1] * normal[2];
-		  cross[1] = point[0] * normal[2] - normal[0] * point[2];
-		  cross[2] = normal[0] * point[1] - point[0] * normal[1];
-
-		  for (int j = 0; j < NUM_DIMENSIONS; j++) {
-		    point[j] = (normal[j] * dot * (1 - cos(theta)) + point[j] * cos(theta) +
-		                cross[j] * sin(theta));
-		    aCoords[j * numAtoms + i] = point[j] + mvector[j];
-		  }
-		}
-
-		angleSizes[angleStart + angleIdx] += expandDeg;
-		cudaMemcpy(sb->angleSizes, &angleSizes, sizeof(Real) * sb->numAngles,
-				cudaMemcpyDeviceToHost);
-	} else	{
-		moleculeData = sb->moleculeData;
-		angleSizes = sb->angleSizes;
-		numMolecules = sb->numMolecules;
-		angleData = sb->angleData;
-		bondStart = moleculeData[MOL_BOND_START * numMolecules + molIdx];
-		bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * numMolecules + molIdx];
-		angleStart = moleculeData[MOL_ANGLE_START * numMolecules + molIdx];
-		startIdx = moleculeData[MOL_START * numMolecules + molIdx];
-		molSize = moleculeData[MOL_LEN * numMolecules + molIdx];
-		end1 = (int)angleData[ANGLE_A1_IDX][angleStart + angleIdx];
-		end2 = (int)angleData[ANGLE_A2_IDX][angleStart + angleIdx];
-		mid = (int)angleData[ANGLE_MID_IDX][angleStart + angleIdx];
-		aCoords = sb->atomCoordinates;
-		numAtoms = sb->numAtoms;
-		// Create a disjoint set of the atoms in the molecule
-		for (int i = 0; i < molSize; i++) {
-		  sb->unionFindParent[i] = i;
-		}
-
-		// Union atoms connected by a bond
-		for (int i = bondStart; i < bondEnd; i++) {
-		  int a1 = (int)sb->bondData[BOND_A1_IDX][i];
-		  int a2 = (int)sb->bondData[BOND_A2_IDX][i];
-		  if (a1 == mid || a2 == mid)
-		    continue;
-		  unionAtoms(a1 - startIdx, a2 - startIdx);
-		}
-
-		int group1 = find(end1 - startIdx);
-		int group2 = find(end2 - startIdx);
-		if (group1 == group2) {
-		  // std::cout << "ERROR: EXPANDING ANGLE IN A RING!" << std::endl;
-		  return;
-		}
-		Real DEG2RAD = 3.14159256358979323846264 / 180.0;
-		Real end1Mid[NUM_DIMENSIONS];
-		Real end2Mid[NUM_DIMENSIONS];
-		Real normal[NUM_DIMENSIONS];
-		Real mvector[NUM_DIMENSIONS];
-		for (int i = 0; i < NUM_DIMENSIONS; i++) {
-		  end1Mid[i] = aCoords[i * numAtoms + mid] - aCoords[i * numAtoms + end1];
-		  end2Mid[i] = aCoords[i * numAtoms + mid] - aCoords[i * numAtoms + end2];
-		  mvector[i] = aCoords[i * numAtoms + mid];
-		}
-		normal[0] = end1Mid[1] * end2Mid[2] - end2Mid[1] * end1Mid[2];
-		normal[1] = end2Mid[0] * end1Mid[2] - end1Mid[0] * end2Mid[2];
-		normal[2] = end1Mid[0] * end2Mid[1] - end2Mid[0] * end1Mid[1];
-		Real normLen = 0.0;
-		for (int i = 0; i < NUM_DIMENSIONS; i++) {
-		  normLen += normal[i] * normal[i];
-		}
-		normLen = sqrt(normLen);
-		for (int i = 0; i < NUM_DIMENSIONS; i++) {
-		  normal[i] = normal[i] / normLen;
-		}
+    // ADD TO SIMCALCS!
+    // Union atoms connected by a bond
+    SimCalcs::unionByBond<<<1,1>>>(bondStart, bondEnd, startIdx, mid, GPUCopy::simBoxGPU());
 
 
-		for (int i = startIdx; i < startIdx + molSize; i++) {
-		  Real theta;
-		  Real point[NUM_DIMENSIONS];
-		  Real dot = 0.0;
-		  Real cross[NUM_DIMENSIONS];
-		  if (find(i - startIdx) == group1) {
-		    theta = expandDeg * -DEG2RAD;
-		  } else if (find(i - startIdx) == group2) {
-		    theta = expandDeg * DEG2RAD;
-		  } else {
-		    continue;
-		  }
+    int group1 = find(end1 - startIdx);
+    int group2 = find(end2 - startIdx);
+    if (group1 == group2) {
+      // std::cout << "ERROR: EXPANDING ANGLE IN A RING!" << std::endl;
+      return;
+    }
+    Real DEG2RAD = 3.14159256358979323846264 / 180.0;
+    Real end1Mid[NUM_DIMENSIONS];
+    Real end2Mid[NUM_DIMENSIONS];
+    Real normal[NUM_DIMENSIONS];
+    Real mvector[NUM_DIMENSIONS];
+    for (int i = 0; i < NUM_DIMENSIONS; i++) {
+      end1Mid[i] = aCoords[i * numAtoms + mid] - aCoords[i * numAtoms + end1];
+      end2Mid[i] = aCoords[i * numAtoms + mid] - aCoords[i * numAtoms + end2];
+      mvector[i] = aCoords[i * numAtoms + mid];
+    }
+    normal[0] = end1Mid[1] * end2Mid[2] - end2Mid[1] * end1Mid[2];
+    normal[1] = end2Mid[0] * end1Mid[2] - end1Mid[0] * end2Mid[2];
+    normal[2] = end1Mid[0] * end2Mid[1] - end2Mid[0] * end1Mid[1];
+    Real normLen = 0.0;
+    for (int i = 0; i < NUM_DIMENSIONS; i++) {
+      normLen += normal[i] * normal[i];
+    }
+    normLen = sqrt(normLen);
+    for (int i = 0; i < NUM_DIMENSIONS; i++) {
+      normal[i] = normal[i] / normLen;
+    }
 
-		  for (int j = 0; j < NUM_DIMENSIONS; j++) {
-		    point[j] = aCoords[j * numAtoms + i] - mvector[j];
-		    dot += point[j] * normal[j];
-		  }
+    for (int i = startIdx; i < startIdx + molSize; i++) {
+      Real theta;
+      Real point[NUM_DIMENSIONS];
+      Real dot = 0.0;
+      Real cross[NUM_DIMENSIONS];
+      if (find(i - startIdx) == group1) {
+        theta = expandDeg * -DEG2RAD;
+      } else if (find(i - startIdx) == group2) {
+        theta = expandDeg * DEG2RAD;
+      } else {
+        continue;
+      }
 
-		  cross[0] = normal[1] * point[2] - point[1] * normal[2];
-		  cross[1] = point[0] * normal[2] - normal[0] * point[2];
-		  cross[2] = normal[0] * point[1] - point[0] * normal[1];
+      for (int j = 0; j < NUM_DIMENSIONS; j++) {
+        point[j] = aCoords[j * numAtoms + i] - mvector[j];
+        dot += point[j] * normal[j];
+      }
 
-		  for (int j = 0; j < NUM_DIMENSIONS; j++) {
-		    point[j] = (normal[j] * dot * (1 - cos(theta)) + point[j] * cos(theta) +
-		                cross[j] * sin(theta));
-		    aCoords[j * numAtoms + i] = point[j] + mvector[j];
-		  }
-		}
+      cross[0] = normal[1] * point[2] - point[1] * normal[2];
+      cross[1] = point[0] * normal[2] - normal[0] * point[2];
+      cross[2] = normal[0] * point[1] - point[0] * normal[1];
 
-	angleSizes[angleStart + angleIdx] += expandDeg;
-	}
+      for (int j = 0; j < NUM_DIMENSIONS; j++) {
+        point[j] = (normal[j] * dot * (1 - cos(theta)) + point[j] * cos(theta) +
+                    cross[j] * sin(theta));
+        aCoords[j * numAtoms + i] = point[j] + mvector[j];
+      }
+    }
+
+    angleSizes[angleStart + angleIdx] += expandDeg;
+    cudaMemcpy(sb->angleSizes, &angleSizes, sizeof(Real) * sb->numAngles,
+        cudaMemcpyDeviceToHost);
+  } else  {
+    moleculeData = sb->moleculeData;
+    angleSizes = sb->angleSizes;
+    numMolecules = sb->numMolecules;
+    angleData = sb->angleData;
+    bondStart = moleculeData[MOL_BOND_START * numMolecules + molIdx];
+    bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * numMolecules + molIdx];
+    angleStart = moleculeData[MOL_ANGLE_START * numMolecules + molIdx];
+    startIdx = moleculeData[MOL_START * numMolecules + molIdx];
+    molSize = moleculeData[MOL_LEN * numMolecules + molIdx];
+    end1 = (int)angleData[ANGLE_A1_IDX][angleStart + angleIdx];
+    end2 = (int)angleData[ANGLE_A2_IDX][angleStart + angleIdx];
+    mid = (int)angleData[ANGLE_MID_IDX][angleStart + angleIdx];
+    aCoords = sb->atomCoordinates;
+    numAtoms = sb->numAtoms;
+    // Create a disjoint set of the atoms in the molecule
+    for (int i = 0; i < molSize; i++) {
+      sb->unionFindParent[i] = i;
+    }
+
+    // Union atoms connected by a bond
+    for (int i = bondStart; i < bondEnd; i++) {
+      int a1 = (int)sb->bondData[BOND_A1_IDX][i];
+      int a2 = (int)sb->bondData[BOND_A2_IDX][i];
+      if (a1 == mid || a2 == mid)
+        continue;
+      unionAtoms(a1 - startIdx, a2 - startIdx);
+    }
+
+    int group1 = find(end1 - startIdx);
+    int group2 = find(end2 - startIdx);
+    if (group1 == group2) {
+      // std::cout << "ERROR: EXPANDING ANGLE IN A RING!" << std::endl;
+      return;
+    }
+    Real DEG2RAD = 3.14159256358979323846264 / 180.0;
+    Real end1Mid[NUM_DIMENSIONS];
+    Real end2Mid[NUM_DIMENSIONS];
+    Real normal[NUM_DIMENSIONS];
+    Real mvector[NUM_DIMENSIONS];
+    for (int i = 0; i < NUM_DIMENSIONS; i++) {
+      end1Mid[i] = aCoords[i * numAtoms + mid] - aCoords[i * numAtoms + end1];
+      end2Mid[i] = aCoords[i * numAtoms + mid] - aCoords[i * numAtoms + end2];
+      mvector[i] = aCoords[i * numAtoms + mid];
+    }
+    normal[0] = end1Mid[1] * end2Mid[2] - end2Mid[1] * end1Mid[2];
+    normal[1] = end2Mid[0] * end1Mid[2] - end1Mid[0] * end2Mid[2];
+    normal[2] = end1Mid[0] * end2Mid[1] - end2Mid[0] * end1Mid[1];
+    Real normLen = 0.0;
+    for (int i = 0; i < NUM_DIMENSIONS; i++) {
+      normLen += normal[i] * normal[i];
+    }
+    normLen = sqrt(normLen);
+    for (int i = 0; i < NUM_DIMENSIONS; i++) {
+      normal[i] = normal[i] / normLen;
+    }
+
+
+    for (int i = startIdx; i < startIdx + molSize; i++) {
+      Real theta;
+      Real point[NUM_DIMENSIONS];
+      Real dot = 0.0;
+      Real cross[NUM_DIMENSIONS];
+      if (find(i - startIdx) == group1) {
+        theta = expandDeg * -DEG2RAD;
+      } else if (find(i - startIdx) == group2) {
+        theta = expandDeg * DEG2RAD;
+      } else {
+        continue;
+      }
+
+      for (int j = 0; j < NUM_DIMENSIONS; j++) {
+        point[j] = aCoords[j * numAtoms + i] - mvector[j];
+        dot += point[j] * normal[j];
+      }
+
+      cross[0] = normal[1] * point[2] - point[1] * normal[2];
+      cross[1] = point[0] * normal[2] - normal[0] * point[2];
+      cross[2] = normal[0] * point[1] - point[0] * normal[1];
+
+      for (int j = 0; j < NUM_DIMENSIONS; j++) {
+        point[j] = (normal[j] * dot * (1 - cos(theta)) + point[j] * cos(theta) +
+                    cross[j] * sin(theta));
+        aCoords[j * numAtoms + i] = point[j] + mvector[j];
+      }
+    }
+
+  angleSizes[angleStart + angleIdx] += expandDeg;
+  }
 }
 
 __global__
 void SimCalcs::calcBondEnergy(Real** bondData, Real* bondLengths, 
-			Real out, int bondStart, int bondEnd)	{
-  for (int i = bondStart; i < bondEnd; i++)	{
-    if ((bool)bondData[BOND_VARIABLE][i])	{
+      Real out, int bondStart, int bondEnd)  {
+  for (int i = bondStart; i < bondEnd; i++)  {
+    if ((bool)bondData[BOND_VARIABLE][i])  {
       Real diff = bondData[BOND_EQDIST][i] - bondLengths[i];
       out += bondData[BOND_KBOND][i] * diff * diff;
     }
@@ -407,7 +407,7 @@ Real SimCalcs::bondEnergy(int molIdx) {
   Real* bondLengths = NULL;
   int* moleculeData = NULL;
 
- if (on_gpu)	{
+ if (on_gpu)  {
     cudaMemcpy(&bondData, &(sb->bondData), sizeof(Real) * sb->numBonds * BOND_DATA_SIZE, cudaMemcpyHostToDevice);
     cudaMemcpy(&bondLengths, &(sb->bondLengths), sb->numBonds * sizeof(Real), cudaMemcpyHostToDevice);
     cudaMemcpy(&moleculeData, &(sb->moleculeData), MOL_DATA_SIZE * sizeof(int) * sb->numMolecules, cudaMemcpyHostToDevice);
@@ -415,8 +415,8 @@ Real SimCalcs::bondEnergy(int molIdx) {
     int bondStart = moleculeData[MOL_BOND_START * numMolecules + molIdx];
     int bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * numMolecules + molIdx];
     SimCalcs::calcBondEnergy<<<1, 1>>>(bondData, bondLengths,
-				out, bondStart, bondEnd);
-  } else	{
+        out, bondStart, bondEnd);
+  } else  {
     bondData = sb->bondData;
     bondLengths = sb->bondLengths;
     moleculeData = sb->moleculeData;
@@ -424,8 +424,8 @@ Real SimCalcs::bondEnergy(int molIdx) {
     int bondStart = moleculeData[MOL_BOND_START * numMolecules + molIdx];
     int bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * numMolecules + molIdx];
 
-    for (int i = bondStart; i < bondEnd; i++)	{
-      if ((bool)bondData[BOND_VARIABLE][i])	{
+    for (int i = bondStart; i < bondEnd; i++)  {
+      if ((bool)bondData[BOND_VARIABLE][i])  {
         Real diff = bondData[BOND_EQDIST][i] - bondLengths[i];
         out += bondData[BOND_KBOND][i] * diff * diff;
       }
@@ -435,61 +435,134 @@ Real SimCalcs::bondEnergy(int molIdx) {
   return out;
 }
 
-void SimCalcs::stretchBond(int molIdx, int bondIdx, Real stretchDist) {
-  Real* bondLengths = sb->bondLengths;
-  int bondStart = sb->moleculeData[MOL_BOND_START * sb->numMolecules + molIdx];
-  int bondEnd = bondStart + sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + molIdx];
-  int startIdx = sb->moleculeData[MOL_START * sb->numMolecules + molIdx];
-  int molSize = sb->moleculeData[MOL_LEN * sb->numMolecules + molIdx];
-  int end1 = (int)sb->bondData[BOND_A1_IDX][bondStart + bondIdx];
-  int end2 = (int)sb->bondData[BOND_A2_IDX][bondStart + bondIdx];
-  Real* aCoords = sb->atomCoordinates;
-  int numAtoms = sb->numAtoms;
-
-  for (int i = 0; i < molSize; i++) {
-    sb->unionFindParent[i] = i;
-  }
-
-  // Split the molecule atoms into two disjoint sets around the bond
+void SimCalcs::stretchBondDisjoint(int bondStart, int bondEnd, int bondIdx, 
+    Real** bondData, SimBox* simBox)  {
   for (int i = bondStart; i < bondEnd; i++) {
     if (i == bondIdx + bondStart)
       continue;
-    int a1 = (int)sb->bondData[BOND_A1_IDX][i] - startIdx;
-    int a2 = (int)sb->bondData[BOND_A2_IDX][i] - startIdx;
-    unionAtoms(a1, a2);
+    int a1 = (int)bondData[BOND_A1_IDX][i] - startIdx;
+    int a2 = (int)bondData[BOND_A2_IDX][i] - startIdx;
+    unionAtomsGPU(a1, a2, simBox);
   }
-  int side1 = find(end1 - startIdx);
-  int side2 = find(end2 - startIdx);
-  if (side1 == side2) {
-    // std::cerr << "ERROR: EXPANDING BOND IN A RING!" << std::endl;
-    return;
-  }
+}
 
-  // Move each atom the appropriate distance for the bond stretch
-  Real v[NUM_DIMENSIONS];
-  Real denon = 0.0;
-  for (int i = 0; i < NUM_DIMENSIONS; i++) {
-    v[i] = aCoords[i * numAtoms + end2] - aCoords[i * numAtoms + end1];
-    denon += v[i] * v[i];
-  }
-  denon = sqrt(denon);
-  for (int i = 0; i < NUM_DIMENSIONS; i++) {
-    v[i] = v[i] / denon / 2.0;
-  }
-  for (int i = 0; i < molSize; i++) {
-    if (find(i) == side2) {
-      for (int j = 0; j < NUM_DIMENSIONS; j++) {
-        aCoords[j * numAtoms + i + startIdx] += v[j] * stretchDist;
-      }
-    } else {
-      for (int j = 0; j < NUM_DIMENSIONS; j++) {
-        aCoords[j * numAtoms + i + startIdx] -= v[j] * stretchDist;
-      }
+void SimCalcs::stretchBond(int molIdx, int bondIdx, Real stretchDist) {
+  // John Lee
+  Real* bondLengths = NULL;
+  int* moleculeData = NULL;
+  Real** bondData = NULL;
+  Real* aCoords = NULL;
+  if (on_gpu)  {
+    cudaMemcpy(&bondLengths, &(sb->bondLengths), sb->numBonds * sizeof(Real), 
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(&moleculeData, &(sb->moleculeData), 
+               MOL_DATA_SIZE * sizeof(int) * sb->numMolecules, cudaMemcpyHostToDevice);
+    cudaMemcpy(&bondData, &(sb->bondData), sb->numBonds * sizeof(Real) * BOND_DATA_SIZE,
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(&aCoords, &(sb->atomCoordinates), 
+               NUM_DIMENSIONS * sizeof(Real) * sb->numAtoms, cudaMemcpyHostToDevice);
+    int bondStart = moleculeData[MOL_BOND_START * sb->numMolecules + molIdx];
+    int bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * sb->numMolecules + molIdx];
+    int startIdx = moleculeData[MOL_START * sb->numMolecules + molIdx];
+    int molSize = moleculeData[MOL_LEN * sb->numMolecules + molIdx];
+    int end1 = (int)bondData[BOND_A1_IDX][bondStart + bondIdx];
+    int end2 = (int)bondData[BOND_A2_IDX][bondStart + bondIdx];
+    int numAtoms = sb->numAtoms;
+
+    SimCalcs::disjointAtomsInMolecule<<<1,1>>>(molSize, GPUCopy::simBoxGPU());
+
+    // Split the molecule atoms into two disjoint sets around the bond
+    SimCalcs::stretchBondDisjoint<<<1,1>>>(bondStart, bondEnd, bondIdx, bondData, 
+                                           GPUCopy::simBoxGPU());
+    int side1 = 0;
+    findGPU(end1 - startIdx, GPUCopy::simBoxGPU(), side1);
+    int side2 = -1;
+    findGPU(end2 - startIdx, GPUCopy::simBoxGPU(), side2);
+    if (side1 == side2) {
+      // std::cerr << "ERROR: EXPANDING BOND IN A RING!" << std::endl;
+      return;
     }
-  }
 
+    // Move each atom the appropriate distance for the bond stretch
+    Real v[NUM_DIMENSIONS];
+    Real denon = 0.0;
+    for (int i = 0; i < NUM_DIMENSIONS; i++) {
+      v[i] = aCoords[i * numAtoms + end2] - aCoords[i * numAtoms + end1];
+      denon += v[i] * v[i];
+    }
+    denon = sqrt(denon);
+    for (int i = 0; i < NUM_DIMENSIONS; i++) {
+      v[i] = v[i] / denon / 2.0;
+    }
+    for (int i = 0; i < molSize; i++) {
+      if (find(i) == side2) {
+        for (int j = 0; j < NUM_DIMENSIONS; j++) {
+          aCoords[j * numAtoms + i + startIdx] += v[j] * stretchDist;
+        }
+      } else {
+        for (int j = 0; j < NUM_DIMENSIONS; j++) {
+          aCoords[j * numAtoms + i + startIdx] -= v[j] * stretchDist;
+        }
+    }
+    bondLengths[bondStart + bondIdx] += stretchDist;
+    cudaMemcpy(&(sb->bondLengths), bondLengths, sb->numBonds * sizeof(Real),
+               cudaMemcopyDeviceToHost);
+  } else  {
+    bondLengths = sb->bondLengths;
+    moleculeData = sb->moleculeData;
+    bondData = sb->bondData;
+    aCoords = sb->atomCoordinates;
+    int bondStart = moleculeData[MOL_BOND_START * sb->numMolecules + molIdx];
+    int bondEnd = bondStart + moleculeData[MOL_BOND_COUNT * sb->numMolecules + molIdx];
+    int startIdx = moleculeData[MOL_START * sb->numMolecules + molIdx];
+    int molSize = moleculeData[MOL_LEN * sb->numMolecules + molIdx];
+    int end1 = (int)bondData[BOND_A1_IDX][bondStart + bondIdx];
+    int end2 = (int)bondData[BOND_A2_IDX][bondStart + bondIdx];
+    int numAtoms = sb->numAtoms;
+
+    for (int i = 0; i < molSize; i++) {
+      sb->unionFindParent[i] = i;
+    }
+
+    // Split the molecule atoms into two disjoint sets around the bond
+    for (int i = bondStart; i < bondEnd; i++) {
+      if (i == bondIdx + bondStart)
+        continue;
+      int a1 = (int)sb->bondData[BOND_A1_IDX][i] - startIdx;
+      int a2 = (int)sb->bondData[BOND_A2_IDX][i] - startIdx;
+      unionAtoms(a1, a2);
+    }
+    int side1 = find(end1 - startIdx);
+    int side2 = find(end2 - startIdx);
+    if (side1 == side2) {
+      // std::cerr << "ERROR: EXPANDING BOND IN A RING!" << std::endl;
+      return;
+    }
+
+    // Move each atom the appropriate distance for the bond stretch
+    Real v[NUM_DIMENSIONS];
+    Real denon = 0.0;
+    for (int i = 0; i < NUM_DIMENSIONS; i++) {
+      v[i] = aCoords[i * numAtoms + end2] - aCoords[i * numAtoms + end1];
+      denon += v[i] * v[i];
+    }
+    denon = sqrt(denon);
+    for (int i = 0; i < NUM_DIMENSIONS; i++) {
+      v[i] = v[i] / denon / 2.0;
+    }
+    for (int i = 0; i < molSize; i++) {
+      if (find(i) == side2) {
+        for (int j = 0; j < NUM_DIMENSIONS; j++) {
+          aCoords[j * numAtoms + i + startIdx] += v[j] * stretchDist;
+        }
+      } else {
+        for (int j = 0; j < NUM_DIMENSIONS; j++) {
+          aCoords[j * numAtoms + i + startIdx] -= v[j] * stretchDist;
+        }
+    }
   // Record the actual bond stretch
   bondLengths[bondStart + bondIdx] += stretchDist;
+  }
 }
 
 Real SimCalcs::torsionEnergy(int molIdx) {
@@ -958,12 +1031,12 @@ void SimCalcs::unionAtoms(int atom1, int atom2) {
 }
 
 __device__
-void SimCalcs::unionAtomsGPU(int atom1, int atom2, SimBox* simBox)	{
+void SimCalcs::unionAtomsGPU(int atom1, int atom2, SimBox* simBox)  {
   int a1Parent;
   int a2Parent;
   findGPU(atom1, simBox, a1Parent);
   findGPU(atom2, simBox, a2Parent);
-  if (a1Parent != a2Parent)	{
+  if (a1Parent != a2Parent)  {
     simBox->unionFindParent[a1Parent] = a2Parent;
   }
 }
@@ -978,7 +1051,7 @@ int SimCalcs::find(int atomIdx) {
 }
 
 __device__
-void SimCalcs::findGPU(int atomIdx, SimBox* simBox, int retVal)	{
+void SimCalcs::findGPU(int atomIdx, SimBox* simBox, int retVal)  {
   while(simBox->unionFindParent[atomIdx] != atomIdx)
     atomIdx = simBox->unionFindParent[atomIdx];
   retVal = atomIdx;

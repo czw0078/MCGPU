@@ -114,11 +114,12 @@ namespace SimCalcs {
    */
   Real calcIntraMolecularEnergy(int molIdx);
 
-	/**
-	 * GPU calculation for angleEnergy below.
- 	 */
-	void calcAngleEnergy(Real** angleData, Real* angleSizes, 
-		Real out, int angleStart, int angleEnd);
+  /**
+   * GPU calculation for angleEnergy below.
+    */
+  __global__
+  void calcAngleEnergy(Real** angleData, Real* angleSizes, 
+                       Real out, int angleStart, int angleEnd);
 
   /**
    * Calculates the energy from various flexible angles within the molecule.
@@ -141,10 +142,11 @@ namespace SimCalcs {
    */
   void expandAngle(int molIdx, int angleIdx, Real expandDeg);
 
-	/**
-	 * GPU Calculation for bondEnergy below.
-	 */
-	void calcBondEnergy(Real** bondData, Real* bondLengths, 
+  /**
+   * GPU Calculation for bondEnergy below.
+   */
+  __global__
+  void calcBondEnergy(Real** bondData, Real* bondLengths, 
 			Real d_out, int bondStart, int bondEnd);
 
   /**
@@ -389,6 +391,13 @@ namespace SimCalcs {
   void unionAtoms(int atom1, int atom2);
 
   /**
+   * Does the same as unionAtoms, but on the GPU.
+   *
+   */
+  __device__
+  void unionAtomsGPU(int atom1, int atom2, SimBox* simBox);
+
+  /**
    * Finds the representative element of an atom in the disjoint set array.
    * Note that the atom is indexed within the molecule, so the first atom in the
    * 12th molecule has index 0. This function also performs path compression.
@@ -397,6 +406,13 @@ namespace SimCalcs {
    * @return The representative element of the atom index.
    */
   int find (int atomIdx);
+
+  /**
+   * Does the same as find, but on the GPU.
+   *
+   */
+  __device__
+  void findGPU(int atomIdx, SimBox* simBox, int retVal);
 
   /**
    * Determines if a move should be accepted based on the before and after
@@ -410,15 +426,17 @@ namespace SimCalcs {
   /** Set the current SimBox instance for this namespace */
   void setSB(SimBox* sb);
 
-	/**
-	 *
-	 */
-	disjointAtomsInMolecule(int molSize);
+  /**
+   * Create a disjoint set of the atoms in the molecule
+   */
+  __global__
+  void disjointAtomsInMolecule(int molSize, SimBox* simBox);
 
-	/**
-	 *
-	 */
-	unionByBond(int bondStart, int bondEnd);
+  /**
+   * Union atoms connected by a bond
+   */
+  __global__
+  void unionByBond(int bondStart, int bondEnd, int startIdx, int mid, SimBox* simBox);
 }
 
 #endif

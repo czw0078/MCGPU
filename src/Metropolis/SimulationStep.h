@@ -437,6 +437,10 @@ namespace SimCalcs {
    */
   __global__
   void unionByBond(int bondStart, int bondEnd, int startIdx, int mid, SimBox* simBox);
+
+  __global__
+  void stretchBondDisjoint(int bondStart, int bondEnd, int bondIdx, 
+    Real** bondData, SimBox* simBox);
 }
 
 #endif
