@@ -14,12 +14,29 @@
 #include <thrust/device_vector.h>
 
 class VerletStep: public SimulationStep {
+    private:
+        int NUM_MOLS;
+        int VERLET_SIZE;
+        int VACOORDS_SIZE;
+        thrust::host_vector<int> h_verletList;
+        thrust::host_vector<Real> h_verletAtomCoords;
+        thrust::device_vector<int> d_verletList;
+        thrust::device_vector<Real> d_verletAtomCoords;
+
+        void checkOutsideSkinLayer(int molIdx);
+        void freeMemory();
+
     public:
         explicit VerletStep(SimBox* box): SimulationStep(box),
                                     h_verletList(0),
-                                    h_verletAtomCoords(0) {}
-//                                    d_verletList(0),
-//                                    d_verletAtomCoords(NULL) {}
+                                    h_verletAtomCoords(0),
+                                    d_verletList(0),
+                                    d_verletAtomCoords(0) {
+
+            NUM_MOLS = box->numMolecules;
+            VERLET_SIZE = NUM_MOLS * NUM_MOLS;
+            VACOORDS_SIZE = NUM_DIMENSIONS * box->numAtoms;
+        }
 
         virtual ~VerletStep();
         virtual Real calcSystemEnergy(Real &subLJ, Real &subCharge, int numMolecules);
@@ -36,13 +53,6 @@ class VerletStep: public SimulationStep {
         virtual Real calcMolecularEnergyContribution(int currMol, int startMol);
         virtual void changeMolecule(int molIdx, SimBox *box);
         virtual void rollback(int molIdx, SimBox *box);
-
-    private:
-        thrust::host_vector<int> h_verletList;
-        thrust::host_vector<Real> h_verletAtomCoords;
-//        thrust::device_vector<int> d_verletList;
-//        Real* d_verletAtomCoords;
-        void createVerlet();
 };
 
 /**
@@ -53,18 +63,68 @@ class VerletStep: public SimulationStep {
  * to be seperated to accurately run on the GPU.
  */
 namespace VerletCalcs {
-        
+
     /**
      * Determines the energy contribution of a particular molecule.
      * @param currMol The index of the molecule to calculate the contribution
      * @param startMol The index of the molecule to begin searching from to 
      *                      determine interaction energies
-     * @param verletList The host_vector<int> containing the indexes of molecules
-     *                      in range for each molecule 
+     * @param sb The SimBox on either the CPU or GPU
+     * @param verletList The int* casted host_vector<int> device_vector<int> containing 
+     *                      the indexes of molecules in range for each molecule 
      * @return The total energy of the box (discounts initial lj / charge energy)
      */
-    Real calcMolecularEnergyContribution(int currMol, int startMol, thrust::host_vector<int> verletList);
-    
+    template <typename T>
+    struct calcMolecularEnergyContribution {
+        __host__ __device__
+        void operator()(int currMol, int startMol, SimBox* sb, int* verletList, int verletListLength) const;
+    };
+
+    __global__
+    void energyContribution_Kernel(int currMol, int startMol, SimBox* sb, int* verletList, int verletListLength);
+
+
+    /*
+     * @param verletList
+     * @param verletAtomCoords
+     * @param verletListLength
+     * @param sb
+     */
+
+    /**
+     * Checks if the verlet list needs to be updated to account for 
+     * changes to molecule positions
+     *
+     * @return True/False if an update needs to take place
+     */
+    template <typename T>
+    struct UpdateVerletList {
+        __host__ __device__
+        void operator()( const T i, const Real* vaCoords, SimBox* sb );
+    };
+
+    __global__
+    void updateVerlet_Kernel( int i, Real* vaCoords, SimBox* sb );
+
+    /**
+     * Creates a new verlet list
+     * @param sb
+     * @param verletList
+     * @param verletListLength
+     * @param verletAtomCoords
+     * @param vaCoordsLength
+     */
+    template <typename T>
+    struct NewVerletList {
+    __host__ __device__
+    void operator()(T* verletList, Real* verletAtomCoords,
+                        const int verletListLength, const int vaCoordsLength,
+                        SimBox* sb);
+    };
+
+    __global__
+    void NewVerletList_Kernel(int* verletList, Real* verletAtomCoords, int verletListLength, int vaCoordsLength, SimBox* sb);
+
      /**
       * Determines whether or not two molecule's primaryIndexes are
       * within the cutoff range of one another and calculates the 
@@ -77,26 +137,5 @@ namespace VerletCalcs {
       */
     __host__ __device__
     Real calcMoleculeInteractionEnergy (int m1, int m2, SimBox* sb);
-    
-    /**
-     * Checks if the verlet list needs to be updated to account for 
-     * changes to molecule positions
-     *
-     * @return True/False if an update needs to take place
-     */
-    bool updateVerlet(thrust::host_vector<Real> &vaCoords, int i);
-    
-    /**
-     * Frees memory used for a CPU run
-     */
-    void freeMemory(thrust::host_vector<int> &h_verletList, thrust::host_vector<Real> &vaCoords);
-
-    /**
-     * Creates a new verlet list for CPU run
-     *
-     * @return A host_vector<int> representing a verlet list
-     */
-    thrust::host_vector<int> newVerletList();
 }
-
 #endif

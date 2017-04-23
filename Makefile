@@ -75,7 +75,8 @@ BuildDir := $(ObjDir)
 Modules := Applications \
 		Metropolis \
 		Metropolis/Utilities \
-		Metropolis/SerialSim \
+		Metropolis/ParallelSim\
+		Metropolis/SerialSim
 
 ########################
 # Program Output Names #

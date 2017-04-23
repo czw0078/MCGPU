@@ -25,6 +25,10 @@ class SimBox {
   // ----- Basic Environment Conditions -----
   
   Real energy;
+  
+  bool updateVerlet;
+
+  Real longRangeCorrection;
 
   /**
    * Real[3] Holds the box's dimensions.
