@@ -195,7 +195,6 @@ void Simulation::run() {
   }
 */  
 
-  /* DEBUG: do not perform main simloop
   // ----- Main simulation loop -----
   for (int move = stepStart; move < (stepStart + simSteps); move++) {
     new_lj = 0, old_lj = 0, new_charge = 0, old_charge = 0;
@@ -241,8 +240,7 @@ void Simulation::run() {
     }
     sb->stepNum++;
   }
-  */
-
+ 
   delete(simStep);
   endTime = clock();
   writePDB(box->getEnvironment(), box->getMolecules(), sb, getPDBName());
