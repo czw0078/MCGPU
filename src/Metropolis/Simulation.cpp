@@ -34,6 +34,67 @@
 #define RESULTS_FILE_DEFAULT "run"
 #define RESULTS_FILE_EXT ".results"
 
+/* FOR DEBUGGING ONLY*/
+void printSimData(SimBox *sb) {
+  printf("Printing all Bond data found in the SimBox\n");
+  for (int i = 0; i < sb->numMolecules; i++) {
+    int bondStart = sb->moleculeData[MOL_BOND_START * sb->numMolecules + i];
+    int nBonds = sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + i];
+    for (int j = 0; j < nBonds; j++) {
+      printf("Bond %d.%d: %d-%d, %5.2f, %5.2f, %d\n", i, j,
+        (int)sb->bondData[BOND_A1_IDX][bondStart+j],
+        (int)sb->bondData[BOND_A2_IDX][bondStart+j],
+        sb->bondData[BOND_KBOND][bondStart+j],
+        sb->bondData[BOND_EQDIST][bondStart+j],
+        (bool)sb->bondData[BOND_VARIABLE][bondStart+j]);
+    }
+  }
+
+  printf("Printing all Angle data found in the SimBox\n");
+  for (int i = 0; i < sb->numMolecules; i++) {
+    int angleStart = sb->moleculeData[MOL_ANGLE_START * sb->numMolecules + i];
+    int nAngles = sb->moleculeData[MOL_ANGLE_COUNT * sb->numMolecules + i];
+    for (int j = 0; j < nAngles; j++) {
+      printf("Angle %d.%d: %d-%d-%d, %5.2f, %6.2f, %d\n", i, j,
+        (int)sb->angleData[ANGLE_A1_IDX][angleStart+j],
+        (int)sb->angleData[ANGLE_MID_IDX][angleStart+j],
+        (int)sb->angleData[ANGLE_A2_IDX][angleStart+j],
+        sb->angleData[ANGLE_KANGLE][angleStart+j],
+        sb->angleData[ANGLE_EQANGLE][angleStart+j],
+        (bool)sb->angleData[ANGLE_VARIABLE][angleStart+j]);
+    }
+  }
+  printf("Printing all Dihedral data found in the SimBox\n");
+  for (int i = 0; i < sb->numMolecules; i++) {
+    int dihedralStart = sb->moleculeData[MOL_DIHEDRAL_START * sb->numMolecules + i];
+    int nDihedrals = sb->moleculeData[MOL_DIHEDRAL_COUNT * sb->numMolecules + i];
+    for (int j = 0; j < nDihedrals; j++) {
+      printf("Dihedral %d.%d: %d-%d-%d-%d, %5.2f..(%5.2f,%5.2f), %d\n", i, j,
+        (int)sb->dihedralData[DIHEDRAL_A1_IDX][dihedralStart+j],
+        (int)sb->dihedralData[DIHEDRAL_A3_IDX][dihedralStart+j],
+        (int)sb->dihedralData[DIHEDRAL_A4_IDX][dihedralStart+j],
+        (int)sb->dihedralData[DIHEDRAL_A2_IDX][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_INIT_VALUE][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_MIN_MEASURE][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_MAX_MEASURE][dihedralStart+j],
+        (bool)sb->dihedralData[DIHEDRAL_VARIABLE][dihedralStart+j]);
+
+      printf("    diehdral is : %s\n",
+        ((bool)sb->dihedralData[DIHEDRAL_IS_PROPER][dihedralStart+j]
+          ? "proper" : "improper")
+      );
+
+      printf("    fourier: (%6.2f, %6.2f, %6.2f, %6.2f)\n",
+        sb->dihedralData[DIHEDRAL_V1_IDX][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_V2_IDX][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_V3_IDX][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_V4_IDX][dihedralStart+j]);
+
+      printf("    measured angle: %f\n\n", SimCalcs::calcDihedralAngle(i,j));
+    }
+  }
+}
+
 Simulation::Simulation(SimulationArgs simArgs) {
   args = simArgs;
   stepStart = 0;
@@ -122,7 +183,7 @@ void Simulation::run() {
   GPUCopy::setParallel(parallel);
 
   // FIXME: Cancel the simulation if we're attempting bond-angle on GPU
-  if (ENABLE_INTRA && (sb->hasFlexibleBonds || sb->hasFlexibleAngles)) {
+  if (ENABLE_INTRA && (sb->hasFlexibleBonds || sb->hasFlexibleAngles || sb->hasFlexibleDihedrals)) {
     if (parallel) {
       std::cout << "ERROR: Cannot perform intramolecular calculations and "
                 << "movements on the GPU at this time. Please switch to the "
@@ -197,66 +258,8 @@ void Simulation::run() {
   */
 
   //DEBUG: print all SimBox data
-  printf("Printing all Bond data found in the SimBox\n");
-  for (int i = 0; i < 1; i++) {
-  // for (int i = 0; i < sb->numMolecules; i++) {
-    int bondStart = sb->moleculeData[MOL_BOND_START * sb->numMolecules + i];
-    int nBonds = sb->moleculeData[MOL_BOND_COUNT * sb->numMolecules + i];
-    for (int j = 0; j < nBonds; j++) {
-      printf("Bond %d.%d: %d-%d, %5.2f, %5.2f, %d\n", i, j,
-        (int)sb->bondData[BOND_A1_IDX][bondStart+j],
-        (int)sb->bondData[BOND_A2_IDX][bondStart+j],
-        sb->bondData[BOND_KBOND][bondStart+j],
-        sb->bondData[BOND_EQDIST][bondStart+j],
-        (bool)sb->bondData[BOND_VARIABLE][bondStart+j]);
-    }
-  }
+  printSimData(sb);
 
-  printf("Printing all Angle data found in the SimBox\n");
-  for (int i = 0; i < sb->numMolecules; i++) {
-    int angleStart = sb->moleculeData[MOL_ANGLE_START * sb->numMolecules + i];
-    int nAngles = sb->moleculeData[MOL_ANGLE_COUNT * sb->numMolecules + i];
-    for (int j = 0; j < nAngles; j++) {
-      printf("Angle %d.%d: %d-%d-%d, %5.2f, %6.2f, %d\n", i, j,
-        (int)sb->angleData[ANGLE_A1_IDX][angleStart+j],
-        (int)sb->angleData[ANGLE_MID_IDX][angleStart+j],
-        (int)sb->angleData[ANGLE_A2_IDX][angleStart+j],
-        sb->angleData[ANGLE_KANGLE][angleStart+j],
-        sb->angleData[ANGLE_EQANGLE][angleStart+j],
-        (bool)sb->angleData[ANGLE_VARIABLE][angleStart+j]);
-    }
-  }
-  printf("Printing all Dihedral data found in the SimBox\n");
-  for (int i = 0; i < sb->numMolecules; i++) {
-    int dihedralStart = sb->moleculeData[MOL_DIHEDRAL_START * sb->numMolecules + i];
-    int nDihedrals = sb->moleculeData[MOL_DIHEDRAL_COUNT * sb->numMolecules + i];
-    for (int j = 0; j < nDihedrals; j++) {
-      printf("Dihedral %d.%d: %d-%d-%d-%d, %5.2f..(%5.2f,%5.2f), %d\n", i, j,
-        (int)sb->dihedralData[DIHEDRAL_A1_IDX][dihedralStart+j],
-        (int)sb->dihedralData[DIHEDRAL_A3_IDX][dihedralStart+j],
-        (int)sb->dihedralData[DIHEDRAL_A4_IDX][dihedralStart+j],
-        (int)sb->dihedralData[DIHEDRAL_A2_IDX][dihedralStart+j],
-        sb->dihedralData[DIHEDRAL_INIT_VALUE][dihedralStart+j],
-        sb->dihedralData[DIHEDRAL_MIN_MEASURE][dihedralStart+j],
-        sb->dihedralData[DIHEDRAL_MAX_MEASURE][dihedralStart+j],
-        (bool)sb->dihedralData[DIHEDRAL_VARIABLE][dihedralStart+j]);
-
-      printf("    diehdral is : %s\n",
-        ((bool)sb->dihedralData[DIHEDRAL_IS_PROPER][dihedralStart+j]
-          ? "proper" : "improper")
-      );
-
-      printf("    fourier: (%6.2f, %6.2f, %6.2f, %6.2f)\n",
-        sb->dihedralData[DIHEDRAL_V1_IDX][dihedralStart+j],
-        sb->dihedralData[DIHEDRAL_V2_IDX][dihedralStart+j],
-        sb->dihedralData[DIHEDRAL_V3_IDX][dihedralStart+j],
-        sb->dihedralData[DIHEDRAL_V4_IDX][dihedralStart+j]);
-
-      printf("    measured angle: %f\n\n", SimCalcs::calcDihedralAngle(i,j));
-    }
-  }
-
-  /* DEBUG: do not perform main simloop
   // ----- Main simulation loop -----
   for (int move = stepStart; move < (stepStart + simSteps); move++) {
     new_lj = 0, old_lj = 0, new_charge = 0, old_charge = 0;
@@ -302,7 +305,9 @@ void Simulation::run() {
     }
     sb->stepNum++;
   }
-  */
+
+  //DEBUG: print all SimBox data
+  printSimData(sb);
 
   delete(simStep);
   endTime = clock();

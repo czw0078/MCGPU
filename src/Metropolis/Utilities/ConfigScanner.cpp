@@ -198,6 +198,8 @@ bool ConfigScanner::readInConfig(string configpath) {
       enviro.maxBondDelta = atof(value.c_str());
     } else if (key == "max-angle-delta") {
       enviro.maxAngleDelta = atof(value.c_str());
+    } else if (key == "max-dihedral-delta") {
+      enviro.maxDihedralDelta = atof(value.c_str());
     } else {
       throwScanError("Unexpected key encountered: " + key);
       return false;
@@ -227,7 +229,7 @@ void ConfigScanner::parsePrimaryIndexDefinitions(string definitions) {
         (*(*(enviro.primaryAtomIndexArray))[i]).push_back(currentPrimaryIndex - 1);
         indexVector = strtok(NULL, ",");
       }
-  
+
       *c = '\0';
       int currentPrimaryIndex = atoi(indexVector);
       (*(enviro.primaryAtomIndexArray)).push_back(new std::vector<int>);

@@ -93,7 +93,7 @@ Real SimCalcs::calcIntraMolecularEnergy(int molIdx) {
   if (sb->hasFlexibleBonds) out += bondEnergy(molIdx);
 
   // Calculate intramolecular LJ and Coulomb energy if necessary
-  if (sb->hasFlexibleBonds || sb->hasFlexibleAngles) {
+  if (sb->hasFlexibleBonds || sb->hasFlexibleAngles || sb->hasFlexibleDihedrals) {
     for (int i = molStart; i < molEnd; i++) {
       for (int j = i + 1; j < molEnd; j++) {
         Real fudgeFactor = 1.0;
@@ -309,7 +309,13 @@ void SimCalcs::stretchBond(int molIdx, int bondIdx, Real stretchDist) {
 }
 
 Real SimCalcs::torsionEnergy(int molIdx) {
-  //TODO: write some code up in here
+  Real out = 0;
+  Real **dihData = sb->dihedralData;
+  int dihStart = (int)sb->moleculeData[MOL_DIHEDRAL_START * sb->numMolecules + molIdx];
+  int dihEnd = dihStart +(int)sb->moleculeData[MOL_DIHEDRAL_COUNT * sb->numMolecules + molIdx];
+  for (int i = dihStart; i < dihEnd; i++) {
+    // TODO compute dihedral energy and add to out
+  }
   return 0;
 }
 
@@ -657,7 +663,11 @@ void SimCalcs::intramolecularMove(int molIdx) {
   int bondStart = sb->moleculeData[MOL_BOND_START * sb->numMolecules + molIdx];
   int numAngles = sb->moleculeData[MOL_ANGLE_COUNT * sb->numMolecules + molIdx];
   int angleStart = sb->moleculeData[MOL_ANGLE_START * sb->numMolecules + molIdx];
-  Real bondDelta = sb->maxBondDelta, angleDelta = sb->maxAngleDelta;
+  int numDihedrals = sb->moleculeData[MOL_DIHEDRAL_COUNT * sb->numMolecules + molIdx];
+  int dihedralStart = sb->moleculeData[MOL_DIHEDRAL_START * sb->numMolecules + molIdx];
+  Real bondDelta = sb->maxBondDelta;
+  Real angleDelta = sb->maxAngleDelta;
+  Real dihedralDelta = sb->maxDihedralDelta;
 
   // Handle bond moves
   if (ENABLE_BOND && sb->hasFlexibleBonds) {
@@ -724,14 +734,43 @@ void SimCalcs::intramolecularMove(int molIdx) {
   }
 
   // TODO: Put dihedral movements here
+  if (ENABLE_DIHEDRAL && sb->hasFlexibleDihedrals) {
+    int numDihedralsToMove = numDihedrals;
+    if (numDihedralsToMove > 3) {
+      numDihedralsToMove = (int)randomReal(2, numDihedrals);
+      numDihedralsToMove = min(numDihedralsToMove, sb->maxIntraMoves);
+    }
+    scaleFactor = 0.25 + (0.75 / (Real)numDihedralsToMove) * intraScaleFactor;
+    sb->numDihedralMoves += numDihedralsToMove;
 
-  //STEPHEN
+    // Select the indexes of the bonds to move
+    while (indexes.size() < numDihedralsToMove) {
+      indexes.insert((int)randomReal(0, numDihedrals));
+    }
+
+    // Move each dihedral
+    for (auto dihedral = indexes.begin(); dihedral != indexes.end(); dihedral++) {
+      Real expandDist = scaleFactor * randomReal(-dihedralDelta, dihedralDelta);
+      if (sb->dihedralData[DIHEDRAL_VARIABLE][dihedralStart + *dihedral]) {
+        alterDihedral(molIdx, *dihedral, expandDist);
+      }
+    }
+    // Do an MC test for delta tuning
+    // Note: Failing does NOT mean we rollback
+    newEnergy = calcIntraMolecularEnergy(molIdx);
+    if (SimCalcs::acceptMove(currentEnergy, newEnergy)) {
+      sb->numAcceptedDihedralMoves += numDihedralsToMove;
+    }
+    currentEnergy = newEnergy;
+    indexes.clear();
+  }
 
   // Tune the deltas to acheive 40% intramolecular acceptance ratio
   // FIXME: Make interval configurable
   if (ENABLE_TUNING && sb->stepNum != 0 && (sb->stepNum % 1000) == 0) {
     Real bondRatio = (Real)sb->numAcceptedBondMoves / sb->numBondMoves;
     Real angleRatio = (Real)sb->numAcceptedAngleMoves / sb->numAngleMoves;
+    Real dihedralRatio = (Real)sb->numAcceptedDihedralMoves / sb->numDihedralMoves;
     Real diff;
 
     diff = bondRatio - TARGET_RATIO;
@@ -742,12 +781,18 @@ void SimCalcs::intramolecularMove(int molIdx) {
     if (fabs(angleDelta) > RATIO_MARGIN) {
       sb->maxAngleDelta += sb->maxAngleDelta * diff;
     }
+    diff = dihedralRatio - TARGET_RATIO;
+    if (fabs(dihedralDelta) > RATIO_MARGIN) {
+      sb->maxDihedralDelta += sb->maxDihedralDelta * diff;
+    }
 
     // Reset the ratio values
     sb->numAcceptedBondMoves = 0;
     sb->numBondMoves = 0;
     sb->numAcceptedAngleMoves = 0;
     sb->numAngleMoves = 0;
+    sb->numAcceptedDihedralMoves = 0;
+    sb->numDihedralMoves = 0;
   }
 }
 

@@ -318,7 +318,7 @@ struct Atom {
 struct Environment
 {
   Real x, y, z, cutoff, temp, maxTranslation, maxRotation;
-  Real maxBondDelta, maxAngleDelta;
+  Real maxBondDelta, maxAngleDelta, maxDihedralDelta;
   int numOfAtoms;
   int numOfMolecules; //this line was added in by Albert to make IOUtilities compile
   std::string* primaryAtomIndexConfigLine;
@@ -350,6 +350,7 @@ struct Environment
     // Taken from Chrys Woods' slide deck
     maxBondDelta = 0.06;
     maxAngleDelta = 3.1;
+    maxDihedralDelta = 5.8;
   }
 
   Environment(Environment* environment) {
@@ -367,6 +368,7 @@ struct Environment
     maxRotation = environment->maxRotation;
     maxBondDelta = environment->maxBondDelta;
     maxAngleDelta = environment->maxAngleDelta;
+    maxDihedralDelta = environment->maxDihedralDelta;
     numOfAtoms = environment->numOfAtoms;
     numOfMolecules = environment->numOfMolecules;
     primaryAtomIndexConfigLine = environment->primaryAtomIndexConfigLine;

@@ -33,12 +33,15 @@ void SimBoxBuilder::initEnvironment(Environment* environment) {
   sb->numMolecules = environment->numOfMolecules;
   sb->maxBondDelta = environment->maxBondDelta;
   sb->maxAngleDelta = environment->maxAngleDelta;
+  sb->maxDihedralDelta = environment->maxDihedralDelta;
 
   sb->stepNum = 0;
   sb->numBondMoves = 0;
   sb->numAcceptedBondMoves = 0;
   sb->numAngleMoves = 0;
   sb->numAcceptedAngleMoves = 0;
+  sb->numDihedralMoves = 0;
+  sb->numAcceptedDihedralMoves = 0;
 }
 
 void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
@@ -205,6 +208,7 @@ void SimBoxBuilder::addMolecules(Molecule* molecules, int numTypes) {
       sb->dihedralData[DIHEDRAL_MAX_MEASURE][dihedralIdx] = d.maxAngleMeasure;
       sb->dihedralData[DIHEDRAL_VARIABLE][dihedralIdx] = d.variable;
       sb->dihedralData[DIHEDRAL_IS_PROPER][dihedralIdx] = d.isProper;
+      sb->hasFlexibleDihedrals |= d.variable;
       dihedralIdx++;
     }
 

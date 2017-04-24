@@ -23,7 +23,7 @@ class SimBox {
   int stepNum;
 
   // ----- Basic Environment Conditions -----
-  
+
   Real energy;
 
   /**
@@ -65,6 +65,11 @@ class SimBox {
    * Holds the absolute value of the maximum change allowed in an angle
    */
   Real maxAngleDelta;
+
+  /**
+   * Holds the absolute value of the maximum change allowed in a dihedral
+   */
+  Real maxDihedralDelta;
 
   /**
    * Holds the number of steps to run.
@@ -238,6 +243,21 @@ class SimBox {
    */
   Real** dihedralData;
 
+  /**
+  * The number of intramolecular moves that have altered a dihedral in this
+  * simulation. Used for intrmolecular delta tuning.
+  */
+  int numDihedralMoves;
+
+  /**
+  * The number of intramolecular dihedral moves that have passed an MC test in
+  * this simulation. Used for intrmolecular delta tuning.
+  */
+  int numAcceptedDihedralMoves;
+
+  // True if at least one dihedral in the SimBox can be moved
+  bool hasFlexibleDihedrals = false;
+  
   // ----- NLC information -----
 
   /**
