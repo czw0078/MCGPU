@@ -435,8 +435,9 @@ Real SimCalcs::bondEnergy(int molIdx) {
   return out;
 }
 
+__global__
 void SimCalcs::stretchBondDisjoint(int bondStart, int bondEnd, int bondIdx, 
-    Real** bondData, SimBox* simBox)  {
+    int startIdx, Real** bondData, SimBox* simBox)  {
   for (int i = bondStart; i < bondEnd; i++) {
     if (i == bondIdx + bondStart)
       continue;
@@ -472,12 +473,11 @@ void SimCalcs::stretchBond(int molIdx, int bondIdx, Real stretchDist) {
     SimCalcs::disjointAtomsInMolecule<<<1,1>>>(molSize, GPUCopy::simBoxGPU());
 
     // Split the molecule atoms into two disjoint sets around the bond
-    SimCalcs::stretchBondDisjoint<<<1,1>>>(bondStart, bondEnd, bondIdx, bondData, 
-                                           GPUCopy::simBoxGPU());
-    int side1 = 0;
-    findGPU(end1 - startIdx, GPUCopy::simBoxGPU(), side1);
-    int side2 = -1;
-    findGPU(end2 - startIdx, GPUCopy::simBoxGPU(), side2);
+    SimCalcs::stretchBondDisjoint<<<1,1>>>(bondStart, bondEnd, bondIdx, startIdx,
+		 bondData, GPUCopy::simBoxGPU());
+    int side1 = find(end1 - startIdx);
+    int side2 = find(end2 - startIdx);
+
     if (side1 == side2) {
       // std::cerr << "ERROR: EXPANDING BOND IN A RING!" << std::endl;
       return;
@@ -503,10 +503,11 @@ void SimCalcs::stretchBond(int molIdx, int bondIdx, Real stretchDist) {
         for (int j = 0; j < NUM_DIMENSIONS; j++) {
           aCoords[j * numAtoms + i + startIdx] -= v[j] * stretchDist;
         }
+      } 
     }
     bondLengths[bondStart + bondIdx] += stretchDist;
     cudaMemcpy(&(sb->bondLengths), bondLengths, sb->numBonds * sizeof(Real),
-               cudaMemcopyDeviceToHost);
+               cudaMemcpyDeviceToHost);
   } else  {
     bondLengths = sb->bondLengths;
     moleculeData = sb->moleculeData;
@@ -560,6 +561,7 @@ void SimCalcs::stretchBond(int molIdx, int bondIdx, Real stretchDist) {
           aCoords[j * numAtoms + i + startIdx] -= v[j] * stretchDist;
         }
     }
+  }
   // Record the actual bond stretch
   bondLengths[bondStart + bondIdx] += stretchDist;
   }

@@ -12,7 +12,7 @@
 #include "Metropolis/Utilities/MathLibrary.h"
 
 #define VERBOSE true
-#define ENABLE_INTRA false
+#define ENABLE_INTRA true
 #define ENABLE_BOND 1
 #define ENABLE_ANGLE 1
 #define ENABLE_DIHEDRAL 0
@@ -439,7 +439,7 @@ namespace SimCalcs {
   void unionByBond(int bondStart, int bondEnd, int startIdx, int mid, SimBox* simBox);
 
   __global__
-  void stretchBondDisjoint(int bondStart, int bondEnd, int bondIdx, 
+  void stretchBondDisjoint(int bondStart, int bondEnd, int bondIdx, int startIdx, 
     Real** bondData, SimBox* simBox);
 }
 
