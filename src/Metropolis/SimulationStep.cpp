@@ -91,6 +91,7 @@ Real SimCalcs::calcIntraMolecularEnergy(int molIdx) {
   Real out = 0.0;
   if (sb->hasFlexibleAngles) out += angleEnergy(molIdx);
   if (sb->hasFlexibleBonds) out += bondEnergy(molIdx);
+  if (sb->hasFlexibleDihedrals) out += torsionEnergy(molIdx);
 
   // Calculate intramolecular LJ and Coulomb energy if necessary
   if (sb->hasFlexibleBonds || sb->hasFlexibleAngles || sb->hasFlexibleDihedrals) {
@@ -314,9 +315,15 @@ Real SimCalcs::torsionEnergy(int molIdx) {
   int dihStart = (int)sb->moleculeData[MOL_DIHEDRAL_START * sb->numMolecules + molIdx];
   int dihEnd = dihStart +(int)sb->moleculeData[MOL_DIHEDRAL_COUNT * sb->numMolecules + molIdx];
   for (int i = dihStart; i < dihEnd; i++) {
-    // TODO compute dihedral energy and add to out
+    Real thisDihEnergy = 0;
+    Real thisDihAngle = calcDihedralAngle(molIdx, i-dihStart);
+    thisDihEnergy += 0.5 * (1 + cos(thisDihAngle)) * dihData[DIHEDRAL_V1_IDX][i];
+    thisDihEnergy += 0.5 * (1 - cos(2*thisDihAngle)) * dihData[DIHEDRAL_V2_IDX][i];
+    thisDihEnergy += 0.5 * (1 + cos(3*thisDihAngle)) * dihData[DIHEDRAL_V3_IDX][i];
+    thisDihEnergy += 0.5 * (1 - cos(4*thisDihAngle)) * dihData[DIHEDRAL_V4_IDX][i];
+    out += thisDihEnergy;
   }
-  return 0;
+  return out;
 }
 
 void SimCalcs::alterDihedral(int molIdx, int dihIdx, Real twistDeg) {
@@ -329,6 +336,16 @@ void SimCalcs::alterDihedral(int molIdx, int dihIdx, Real twistDeg) {
   int atom2 = (int)sb->dihedralData[DIHEDRAL_A2_IDX][dihStart + dihIdx];
   int atom3 = (int)sb->dihedralData[DIHEDRAL_A3_IDX][dihStart + dihIdx];
   int atom4 = (int)sb->dihedralData[DIHEDRAL_A4_IDX][dihStart + dihIdx];
+
+  Real currentDihedral = sb->dihedralData[DIHEDRAL_MIN_MEASURE][dihStart + dihIdx];
+  Real minDihedralMeasure = sb->dihedralData[DIHEDRAL_VALUE][dihStart + dihIdx];
+  Real maxDihedralMeasure = sb->dihedralData[DIHEDRAL_MAX_MEASURE][dihStart + dihIdx];
+  if (currentDihedral + twistDeg > maxDihedralMeasure) {
+    twistDeg = maxDihedralMeasure - currentDihedral;
+  } else if (currentDihedral + twistDeg < minDihedralMeasure) {
+    twistDeg = minDihedralMeasure - currentDihedral;
+  }
+
 
   Real* aCoords = sb->atomCoordinates;
   int numAtoms = sb->numAtoms;
@@ -419,7 +436,7 @@ void SimCalcs::alterDihedral(int molIdx, int dihIdx, Real twistDeg) {
   }
 
   // Record the bond twist
-  //TODO
+  sb->dihedralData[DIHEDRAL_MIN_MEASURE][dihStart + dihIdx] = currentDihedral + twistDeg;
 
 }
 
@@ -733,7 +750,6 @@ void SimCalcs::intramolecularMove(int molIdx) {
     indexes.clear();
   }
 
-  // TODO: Put dihedral movements here
   if (ENABLE_DIHEDRAL && sb->hasFlexibleDihedrals) {
     int numDihedralsToMove = numDihedrals;
     if (numDihedralsToMove > 3) {

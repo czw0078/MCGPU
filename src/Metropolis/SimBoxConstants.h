@@ -160,7 +160,7 @@
 #define DIHEDRAL_V4_IDX 7
 
 // Indicates the row of dihedralData holding each dihedral's initial measure
-#define DIHEDRAL_INIT_VALUE 8
+#define DIHEDRAL_VALUE 8
 
 // Indicates the row of dihedralData holding the maximumum total amount that
 //     each dihedral can be twisted during pertubation

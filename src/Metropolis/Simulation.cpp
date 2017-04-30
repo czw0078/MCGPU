@@ -74,7 +74,7 @@ void printSimData(SimBox *sb) {
         (int)sb->dihedralData[DIHEDRAL_A3_IDX][dihedralStart+j],
         (int)sb->dihedralData[DIHEDRAL_A4_IDX][dihedralStart+j],
         (int)sb->dihedralData[DIHEDRAL_A2_IDX][dihedralStart+j],
-        sb->dihedralData[DIHEDRAL_INIT_VALUE][dihedralStart+j],
+        sb->dihedralData[DIHEDRAL_VALUE][dihedralStart+j],
         sb->dihedralData[DIHEDRAL_MIN_MEASURE][dihedralStart+j],
         sb->dihedralData[DIHEDRAL_MAX_MEASURE][dihedralStart+j],
         (bool)sb->dihedralData[DIHEDRAL_VARIABLE][dihedralStart+j]);
